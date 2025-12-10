@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Forex Lot Calculator (Hybrid PWA)</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+<style>
+:root{--accent:#007bff;--bg:#f4f6fb;--card:#fff;--muted:#666}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);-webkit-font-smoothing:antialiased}
+.wrap{max-width:520px;margin:56px auto 20px;padding:10px}
+.card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(10,10,20,0.06)}
+h1{font-size:20px;margin:0 0 8px;text-align:center}
+label{display:block;margin-top:10px;font-weight:600;color:#222;font-size:14px}
+select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #d6dbe6;font-size:16px;margin-top:6px}
+button{background:var(--accent);color:#fff;border:0;cursor:pointer}
+button.secondary{background:#eee;color:#111}
+#result{margin-top:12px;font-weight:700;text-align:center;color:#111}
+.footer{margin-top:12px;text-align:center;color:var(--muted);font-size:13px}
+.tiny{font-size:13px;color:#666;margin-top:8px}
+
+/* Lock overlay */
+#lockScreen{position:fixed;inset:0;background:#0b1220cc;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;padding:20px}
+#lockBox{background:#fff;padding:18px;border-radius:12px;min-width:260px;max-width:420px;box-shadow:0 10px 30px rgba(0,0,0,0.4)}
+#lockBox h2{margin:0 0 8px;font-size:18px}
+
+/* Top small buttons */
+.reload-btn,.logout-btn{
+  position:fixed;top:12px;padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#ffffffee;color:#007bff;font-size:13px;z-index:2000;backdrop-filter: blur(4px);
+}
+.reload-btn{left:12px}
+.logout-btn{right:12px}
+
+/* modal */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1500}
+.modal-content{background:#fff;padding:16px;border-radius:12px;max-width:420px;width:92%}
+.modal-content h3{margin-top:0}
+
+/* small improvements for tiny screens */
+@media (min-width:600px){ .wrap{margin-top:80px} h1{font-size:22px} }
+</style>
+</head>
+<body>
+
+<!-- top controls -->
+<button id="reloadBtn" class="reload-btn" onclick="fetchLatest()" title="Reload / Fetch latest pip values">Reload</button>
+<button id="logoutBtn" class="logout-btn" onclick="logout()" style="display:none" title="Logout">Logout</button>
+
+<!-- initial lock overlay -->
+<div id="lockScreen" aria-hidden="false">
+  <div id="lockBox">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-weight:700">Unlock Lot Calculator</div>
+      <div style="font-size:12px;color:#888">One-time per device</div>
+    </div>
+    <h2>Enter password</h2>
+    <input id="passwordInput" type="password" placeholder="Password" autocomplete="off" />
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button onclick="unlockApp()">Unlock</button>
+      <button class="secondary" onclick="showInfo()">Info</button>
+    </div>
+    <div id="lockMsg" class="tiny" style="color:#b00020;margin-top:8px"></div>
+    <div class="tiny" style="margin-top:8px;color:#333">If you forget password you can reset app data in browser settings or reinstall the app.</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h1>Forex Lot Calculator</h1>
+
+    <label for="pair">Pair</label>
+    <select id="pair"></select>
+
+    <label for="lotType">Lot type / mode</label>
+    <select id="lotType">
+      <option value="standardPoint">Standard Point Value</option>
+      <option value="miniPoint">Mini Point Value</option>
+      <option value="microPoint">Micro Point Value</option>
+      <option value="standardPip">Standard Pip Value</option>
+      <option value="miniPip">Mini Pip Value</option>
+      <option value="microPip">Micro Pip Value</option>
+    </select>
+
+    <label for="risk">Risk ($)</label>
+    <input id="risk" type="number" placeholder="e.g. 30">
+
+    <label for="sl">Stop-loss (points or pips as selected)</label>
+    <input id="sl" type="number" placeholder="e.g. 15">
+
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button onclick="calculateLot()" style="flex:1">Calculate Lot Size</button>
+      <button class="secondary" onclick="quickClear()" style="flex:0 0 86px">Clear</button>
+    </div>
+
+    <div id="result" aria-live="polite"></div>
+
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="secondary" onclick="openEdit()">Add / Edit Pair</button>
+    </div>
+
+    <div class="footer">Tip: Password asked only first time on each device. Use Logout to re-lock. Reload fetches live pip values if available.</div>
+  </div>
+</div>
+
+<!-- modal for add/edit pair (password required) -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h3>Add / Edit Pair (Password Required)</h3>
+
+    <div id="modalStep1">
+      <input type="password" id="modalPassword" placeholder="Enter password" />
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button onclick="checkModalPassword()">Unlock</button>
+        <button class="secondary" onclick="closeEditModal()">Close</button>
+      </div>
+      <div id="modalMsg" class="tiny" style="color:#b00020;margin-top:6px"></div>
+    </div>
+
+    <div id="editContent" style="display:none;margin-top:10px">
+      <label>Pair code (e.g. EURJPY)</label>
+      <input id="newPair" type="text" placeholder="Pair name (uppercase)">
+      <label>Point value (1 standard lot)</label>
+      <input id="pointValue" type="number" placeholder="Value per point for 1 standard lot">
+      <label>Pip value (1 standard lot)</label>
+      <input id="pipValue" type="number" placeholder="Value per pip for 1 standard lot">
+      <label>Commission ($ per 1 lot)</label>
+      <input id="commissionValue" type="number" placeholder="Commission per 1 lot">
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="addOrEditPair()">Save Pair</button>
+        <button class="secondary" onclick="closeEditModal()">Close</button>
+      </div>
+      <div style="margin-top:10px">
+        <button class="secondary" onclick="changePassword()">Change Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================
+   CONFIG - easy to edit area
+   ============================
+   Modify the pairs object below to change preloaded point/pip/commission.
+   point = value per point for 1 standard lot (in USD)
+   pip   = value per pip for 1 standard lot (in USD) [if you prefer pips]
+   commission = commission $ per 1 standard lot
+
+   XAUUSD: if you want to set custom point/pip for gold, set those values here.
+*/
+const INITIAL_PASSWORD = "6565";
+const STORAGE_KEY_PAIRS = "lotcalc_pairs_v2";
+const STORAGE_KEY_PASSWORD = "lotcalc_app_pass_v2";
+const STORAGE_KEY_UNLOCKED = "lotcalc_unlocked_v2";
+
+/* Preloaded pairs (edit here easily) */
+let defaultPairs = {
+  "EURUSD": { point:1.0, pip:10.0, commission:4 },
+  "GBPUSD": { point:1.0, pip:10.0, commission:4 },
+  "AUDUSD": { point:1.0, pip:10.0, commission:4 },
+  "NZDUSD": { point:1.0, pip:10.0, commission:4 },
+  "USDJPY": { point:0.69, pip:6.9, commission:4 },
+  "USDCAD": { point:1.0, pip:10.0, commission:4 },
+  "USDCHF": { point:0.91, pip:9.1, commission:4 },
+  "EURJPY": { point:0.76, pip:7.6, commission:4 },
+  "AUDJPY": { point:0.63, pip:6.3, commission:4 },
+  // XAUUSD: point and pip here are placeholders — update with broker values if needed
+  "XAUUSD": { point:1.0, pip:10.0, commission:0 }
+};
+
+/* Load pairs from localStorage or fall back to defaultPairs */
+let pairs;
+try {
+  const saved = localStorage.getItem(STORAGE_KEY_PAIRS);
+  pairs = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultPairs));
+} catch (e) {
+  pairs = JSON.parse(JSON.stringify(defaultPairs));
+}
+
+/* Ensure password exists in storage */
+if (!localStorage.getItem(STORAGE_KEY_PASSWORD)) {
+  localStorage.setItem(STORAGE_KEY_PASSWORD, INITIAL_PASSWORD);
+}
+
+/* ---------------------------
+   Populate dropdown (preferred order first)
+   --------------------------- */
+function populatePairs(){
+  const sel = document.getElementById('pair');
+  sel.innerHTML = '';
+  const preferred = ["EURUSD","GBPUSD","AUDUSD","NZDUSD","EURJPY","AUDJPY","USDJPY","USDCAD","USDCHF","XAUUSD"];
+  preferred.forEach(k=>{
+    if (pairs[k]) {
+      const o = document.createElement('option');
+      o.value = k; o.text = k; sel.appendChild(o);
+    }
+  });
+  Object.keys(pairs).sort().forEach(k=>{
+    if (!preferred.includes(k)) {
+      const o = document.createElement('option');
+      o.value = k; o.text = k; sel.appendChild(o);
+    }
+  });
+}
+populatePairs();
+
+/* ---------------------------
+   Calculation logic
+   --------------------------- */
+function calculateLot(){
+  const pairName = document.getElementById('pair').value;
+  const lotType = document.getElementById('lotType').value;
+  const risk = parseFloat(document.getElementById('risk').value);
+  const sl = parseFloat(document.getElementById('sl').value);
+  if (!pairName || isNaN(risk) || isNaN(sl) || risk <= 0 || sl <= 0) {
+    document.getElementById('result').innerText = "Enter valid Risk and Stop-loss.";
+    return;
+  }
+  const pair = pairs[pairName];
+  // if commission missing, prompt once and save
+  if (pair.commission === undefined || pair.commission === null) {
+    let comm = prompt(`Enter commission for ${pairName} ($ per 1 lot):`);
+    comm = parseFloat(comm);
+    if (isNaN(comm)) comm = 0;
+    pair.commission = comm;
+    localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs));
+  }
+  let valuePerLot = 0;
+  switch (lotType) {
+    case "standardPoint": valuePerLot = pair.point; break;
+    case "miniPoint": valuePerLot = pair.point / 10; break;
+    case "microPoint": valuePerLot = pair.point / 100; break;
+    case "standardPip": valuePerLot = pair.pip; break;
+    case "miniPip": valuePerLot = pair.pip / 10; break;
+    case "microPip": valuePerLot = pair.pip / 100; break;
+  }
+  const lot = risk / (sl * valuePerLot + pair.commission);
+  document.getElementById('result').innerText = `Lot Size: ${lot.toFixed(2)} lots (Risk: $${risk}, SL: ${sl})`;
+}
+
+/* ---------------------------
+   Quick helpers
+   --------------------------- */
+function quickClear(){
+  document.getElementById('risk').value = '';
+  document.getElementById('sl').value = '';
+  document.getElementById('result').innerText = '';
+}
+
+/* ---------------------------
+   Add/Edit modal (passworded)
+   --------------------------- */
+function openEdit(){
+  document.getElementById('editModal').style.display = 'flex';
+  document.getElementById('modalPassword').value = '';
+  document.getElementById('modalMsg').innerText = '';
+  document.getElementById('editContent').style.display = 'none';
+}
+function closeEditModal(){
+  document.getElementById('editModal').style.display = 'none';
+}
+function checkModalPassword(){
+  const typed = (document.getElementById('modalPassword').value || '').trim();
+  const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || INITIAL_PASSWORD;
+  if (typed === real) {
+    document.getElementById('editContent').style.display = 'block';
+    document.getElementById('modalMsg').innerText = '';
+    const s = document.getElementById('pair').value;
+    if (pairs[s]) {
+      document.getElementById('newPair').value = s;
+      document.getElementById('pointValue').value = pairs[s].point;
+      document.getElementById('pipValue').value = pairs[s].pip;
+      document.getElementById('commissionValue').value = pairs[s].commission;
+    } else {
+      document.getElementById('newPair').value = '';
+      document.getElementById('pointValue').value = '';
+      document.getElementById('pipValue').value = '';
+      document.getElementById('commissionValue').value = '';
+    }
+  } else {
+    document.getElementById('modalMsg').innerText = 'Wrong password!';
+  }
+}
+function addOrEditPair(){
+  const name = (document.getElementById('newPair').value || '').toUpperCase().trim();
+  const point = parseFloat(document.getElementById('pointValue').value);
+  const pip = parseFloat(document.getElementById('pipValue').value);
+  const commission = parseFloat(document.getElementById('commissionValue').value);
+  if (!name || isNaN(point) || isNaN(pip) || isNaN(commission)) {
+    alert("Enter pair name, point, pip and commission.");
+    return;
+  }
+  pairs[name] = { point, pip, commission };
+  try { localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs)); } catch(e){}
+  populatePairs();
+  alert(name + " saved.");
+  closeEditModal();
+}
+
+/* ---------------------------
+   Password & Lock logic
+   --------------------------- */
+function isUnlocked(){ return localStorage.getItem(STORAGE_KEY_UNLOCKED) === "true"; }
+function unlockApp(){
+  const typed = (document.getElementById('passwordInput').value || '').trim();
+  const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || INITIAL_PASSWORD;
+  if (typed === real){
+    localStorage.setItem(STORAGE_KEY_UNLOCKED, "true");
+    hideLock();
+  } else {
+    document.getElementById('lockMsg').innerText = "Wrong password. Try again.";
+  }
+}
+function hideLock(){
+  const lock = document.getElementById('lockScreen');
+  if (lock) lock.style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'inline-block';
+}
+function showLock(){
+  const lock = document.getElementById('lockScreen');
+  if (lock) lock.style.display = 'flex';
+  document.getElementById('logoutBtn').style.display = 'none';
+}
+function logout(){
+  if (confirm("Logout will lock the app on this device. Continue?")){
+    localStorage.removeItem(STORAGE_KEY_UNLOCKED);
+    showLock();
+  }
+}
+function changePassword(){
+  const curr = prompt("Enter current password:");
+  if (curr === null) return;
+  const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || INITIAL_PASSWORD;
+  if (curr !== real){ alert("Current password incorrect."); return; }
+  const np = prompt("Enter new password (min 4 chars):");
+  if (!np || np.length < 1){ alert("Invalid password."); return; }
+  localStorage.setItem(STORAGE_KEY_PASSWORD, np);
+  alert("Password updated.");
+}
+function showInfo(){ alert("Password asked only first time on a device. To re-lock use Logout. If you lose password you may reset app data or reinstall."); }
+
+/* On load, check lock state */
+document.addEventListener('DOMContentLoaded', ()=>{
+  if (isUnlocked()) hideLock(); else showLock();
+});
+
+/* ---------------------------
+   Hybrid fetchLatest implementation (graceful)
+   - Attempts to fetch pip/point values from configured sources
+   - If fails (CORS/no network), leaves local values intact
+   - You can change fetchSources[] below to a working endpoint later
+   --------------------------- */
+const fetchSources = [
+  // Example placeholder sources — replace with a working API or proxy you control.
+  // IMPORTANT: Many public sites block cross-origin requests. Use your own API or CORS-enabled endpoint.
+  // "https://example.com/api/pips", 
+  // "https://your-proxy.example.com/myfxbook-fetch"
+];
+
+async function fetchLatest(){
+  // UI feedback
+  const orig = document.getElementById('reloadBtn').innerText;
+  document.getElementById('reloadBtn').innerText = 'Fetching...';
+  try {
+    if (!navigator.onLine) throw new Error("Offline");
+    let updated = false;
+    for (let src of fetchSources){
+      try {
+        const res = await fetch(src, { method: 'GET' });
+        if (!res.ok) continue;
+        const data = await res.json();
+        // expected format: { "EURUSD": { point:1, pip:10 }, "USDJPY": { point:0.69, pip:6.9 }, ... }
+        if (typeof data === 'object'){
+          Object.keys(data).forEach(sym=>{
+            if (!pairs[sym]) pairs[sym] = { point: data[sym].point, pip: data[sym].pip, commission: (pairs[sym] && pairs[sym].commission) || 0 };
+            else { pairs[sym].point = data[sym].point; pairs[sym].pip = data[sym].pip; }
+          });
+          localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs));
+          updated = true;
+          break;
+        }
+      } catch(e){
+        // try next source
+      }
+    }
+    if (updated){
+      populatePairs();
+      alert("Pip/point values updated from online source.");
+    } else {
+      alert("Could not fetch live values (no suitable source or CORS blocked). Using saved values.");
+    }
+  } catch (e){
+    alert("Fetch failed: " + (e.message || e));
+  } finally {
+    document.getElementById('reloadBtn').innerText = orig;
+  }
+}
+
+/* ---------------------------
+   Service worker registration (versioned)
+   --------------------------- */
+if ('serviceWorker' in navigator) {
+  try { navigator.serviceWorker.register('service-worker.js?v=1.0.2').catch(()=>{}); } catch(e){}
+}
+</script>
+</body>
+</html>
