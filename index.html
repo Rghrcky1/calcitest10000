@@ -238,14 +238,43 @@ if (!localStorage.getItem(STORAGE_KEY_PASSWORD)) {
 // --- Firebase initialization ---
 // TODO: Replace these config values with your actual Firebase project config
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  // storageBucket, messagingSenderId, appId – optional
+  apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
+  authDomain: "lotcalci.firebaseapp.com",
+  projectId: "lotcalci",
+  storageBucket: "lotcalci.firebasestorage.app",
+  messagingSenderId: "662389905318",
+  appId: "1:662389905318:web:3b9963ab853374ee606167"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+
+// --- sync Download Cloud Pairs Into Your App (Read Only For Users)
+  async function loadCloudPairs() {
+  try {
+    const snapshot = await db.collection("cloudPairs").get();
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const name = data.name;
+      const point = data.point;
+      const pip = data.pip;
+
+      // Cloud pairs added to pairs list (read-only)
+      pairs[name] = {
+        point: point,
+        pip: pip,
+        commission: pairs[name]?.commission ?? 0
+      };
+    });
+
+    // Update dropdown after loading cloud data
+    populatePairs();
+    console.log("Cloud pairs loaded.");
+  } catch (e) {
+    console.error("Cloud pair load failed:", e);
+  }
+}
+
 
 // Utility: merge pairs for dropdown: cloud + default + local
 function getAllPairs() {
@@ -467,6 +496,7 @@ function showInfo(){ alert("Password asked only first time on a device. To re-lo
 
 document.addEventListener('DOMContentLoaded', ()=>{
   if (isUnlocked()) hideLock(); else showLock();
+  loadCloudPairs();   // <--- new line
 });
 
 // ========== Cloud Sync: Admin ==========
@@ -585,6 +615,7 @@ async function fetchLatest(){
 if ('serviceWorker' in navigator) {
   try { navigator.serviceWorker.register('service-worker.js?v=1.0.0').catch(()=>{}); } catch(e){}
 }
+  
 </script>
 </body>
 </html>
