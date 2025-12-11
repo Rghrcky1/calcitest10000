@@ -1,63 +1,63 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Forex Lot Calculator (Hybrid PWA + Cloud Sync)</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Forex Lot Calculator (Hybrid PWA)</title>
 
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
 
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 
-  <style>
-    :root{--accent:#007bff;--bg:#f4f6fb;--card:#fff;--muted:#666}
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);-webkit-font-smoothing:antialiased}
-    .wrap{max-width:520px;margin:56px auto 20px;padding:10px}
-    .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(10,10,20,0.06)}
-    h1{font-size:20px;margin:0 0 8px;text-align:center}
-    label{display:block;margin-top:10px;font-weight:600;color:#222;font-size:14px}
-    select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #d6dbe6;font-size:16px;margin-top:6px}
-    button{background:var(--accent);color:#fff;border:0;cursor:pointer}
-    button.secondary{background:#eee;color:#111}
-    #result{margin-top:12px;font-weight:700;text-align:center;color:#111}
-    .footer{margin-top:12px;text-align:center;color:var(--muted);font-size:13px}
-    .tiny{font-size:13px;color:#666;margin-top:8px}
+<style>
+:root{--accent:#007bff;--bg:#f4f6fb;--card:#fff;--muted:#666}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);-webkit-font-smoothing:antialiased}
+.wrap{max-width:520px;margin:56px auto 20px;padding:10px}
+.card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(10,10,20,0.06)}
+h1{font-size:20px;margin:0 0 8px;text-align:center}
+label{display:block;margin-top:10px;font-weight:600;color:#222;font-size:14px}
+select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #d6dbe6;font-size:16px;margin-top:6px}
+button{background:var(--accent);color:#fff;border:0;cursor:pointer}
+button.secondary{background:#eee;color:#111}
+#result{margin-top:12px;font-weight:700;text-align:center;color:#111}
+.footer{margin-top:12px;text-align:center;color:var(--muted);font-size:13px}
+.tiny{font-size:13px;color:#666;margin-top:8px}
 
-    /* Lock overlay */
-    #lockScreen{position:fixed;inset:0;background:#0b1220cc;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;padding:20px}
-    #lockBox{background:#fff;padding:18px;border-radius:12px;min-width:260px;max-width:420px;box-shadow:0 10px 30px rgba(0,0,0,0.4)}
-    #lockBox h2{margin:0 0 8px;font-size:18px}
+/* Lock overlay */
+#lockScreen{position:fixed;inset:0;background:#0b1220cc;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;padding:20px}
+#lockBox{background:#fff;padding:18px;border-radius:12px;min-width:260px;max-width:420px;box-shadow:0 10px 30px rgba(0,0,0,0.4)}
+#lockBox h2{margin:0 0 8px;font-size:18px}
 
-    /* Top small buttons */
-    .reload-btn,.logout-btn{
-      position:fixed;top:12px;padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#ffffffee;color:#007bff;font-size:13px;z-index:2000;backdrop-filter: blur(4px);
-    }
-    .reload-btn{left:12px}
-    .logout-btn{right:12px}
+/* Top small buttons */
+.reload-btn,.logout-btn{
+  position:fixed;top:12px;padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#ffffffee;color:#007bff;font-size:13px;z-index:2000;backdrop-filter: blur(4px);
+}
+.reload-btn{left:12px}
+.logout-btn{right:12px}
 
-    /* modal */
-    .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1500}
-    .modal-content{background:#fff;padding:16px;border-radius:12px;max-width:420px;width:92%}
-    .modal-content h3{margin-top:0}
+/* modal */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1500}
+.modal-content{background:#fff;padding:16px;border-radius:12px;max-width:420px;width:92%}
+.modal-content h3{margin-top:0}
 
-    /* Bulk delete list */
-    .delete-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;margin-top:8px;background:#fafafa}
-    .delete-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
-    .delete-item:last-child{border-bottom:0}
+/* Bulk delete list */
+.delete-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;margin-top:8px;background:#fafafa}
+.delete-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
+.delete-item:last-child{border-bottom:0}
 
-    /* small improvements for tiny screens */
-    @media (min-width:600px){ .wrap{margin-top:80px} h1{font-size:22px} }
-  </style>
+/* small improvements for tiny screens */
+@media (min-width:600px){ .wrap{margin-top:80px} h1{font-size:22px} }
+</style>
 </head>
 <body>
 
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 
 <!-- top controls -->
 <button id="reloadBtn" class="reload-btn" onclick="fetchLatest()" title="Reload / Fetch latest pip values">Reload</button>
@@ -113,6 +113,7 @@
 
     <div style="display:flex;gap:8px;margin-top:10px">
       <button class="secondary" onclick="openEdit()">Add / Edit Pair</button>
+      <button class="secondary" onclick="syncCloud()" style="flex:0 0 86px">Sync Cloud</button>
     </div>
 
     <div class="footer">Tip: Password asked only first time on each device. Use Logout to re-lock. Reload fetches live pip values if available.</div>
@@ -145,66 +146,54 @@
       <label>Commission ($ per 1 lot)</label>
       <input id="commissionValue" type="number" placeholder="Commission per 1 lot">
       <div style="display:flex;gap:8px;margin-top:10px">
-        <button onclick="addOrEditLocalPair()">Save Local Pair</button>
+        <button onclick="addOrEditPair()">Save Pair</button>
         <button class="secondary" onclick="closeEditModal()">Close</button>
       </div>
 
-      <div style="margin-top:14px;border-top:1px solid #eee;padding-top:12px;display:flex;gap:8px;">
-        <button onclick="openDeleteView()" class="secondary" style="flex:1;background:#fff;color:#111;border:1px solid #d6dbe6">Delete Local Pairs</button>
-        <button onclick="openAdminSync()" class="secondary" style="flex:1;background:#fff;color:#111;border:1px solid #d6dbe6">Sync (Admin)</button>
-        <button class="secondary" onclick="changePassword()" style="flex:1">Change Password</button>
-      </div>
+      <div style="margin-top:14px;border-top:1px solid #eee;padding-top:12px">
+        <!-- Bulk delete entry point (inside modal as requested) -->
+        <div style="display:flex;gap:8px;">
+          <button onclick="openDeleteView()" class="secondary" style="flex:1;background:#fff;color:#111;border:1px solid #d6dbe6">Delete Pairs</button>
+          <button class="secondary" onclick="changePassword()" style="flex:1">Change Password</button>
+        </div>
 
-      <!-- Delete view (hidden initially) -->
-      <div id="deleteView" style="display:none;margin-top:12px">
-        <div style="font-weight:700;margin-bottom:8px">Delete user-added pairs (local only)</div>
-        <div class="delete-list" id="deleteList">
-          <!-- Filled dynamically with checkboxes for user-added pairs -->
+        <!-- Delete view (hidden initially) -->
+        <div id="deleteView" style="display:none;margin-top:12px">
+          <div style="font-weight:700;margin-bottom:8px">Delete user-added pairs</div>
+          <div class="delete-list" id="deleteList"></div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button onclick="deleteSelected()" style="flex:1;background:#d9534f">Delete Selected</button>
+            <button class="secondary" onclick="closeDeleteView()" style="flex:1">Back</button>
+          </div>
+          <div class="tiny" style="margin-top:8px;color:#666">Default/preloaded pairs are locked and won't appear here.</div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button onclick="deleteSelected()" style="flex:1;background:#d9534f">Delete Selected</button>
-          <button class="secondary" onclick="closeDeleteView()" style="flex:1">Back</button>
-        </div>
-        <div class="tiny" style="margin-top:8px;color:#666">Default/preloaded pairs and cloud pairs are locked and won't appear here.</div>
       </div>
     </div>
   </div>
 </div>
-
-<!-- Admin Sync Modal -->
-<div id="adminModal" class="modal" aria-hidden="true">
-  <div class="modal-content">
-    <h3>Admin Cloud Sync</h3>
-    <div id="adminStep1">
-      <input type="password" id="adminPassword" placeholder="Enter admin password" />
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button onclick="checkAdminPassword()">Unlock</button>
-        <button class="secondary" onclick="closeAdminModal()">Close</button>
-      </div>
-      <div id="adminMsg" class="tiny" style="color:#b00020;margin-top:6px"></div>
-    </div>
-    <div id="adminContent" style="display:none; margin-top:10px">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button onclick="uploadLocalToCloud()" style="flex:1">Upload Local → Cloud</button>
-        <button onclick="downloadCloudToLocal()" style="flex:1">Download Cloud → Local</button>
-        <button class="secondary" onclick="closeAdminModal()" style="flex:1">Close</button>
-      </div>
-      <div class="tiny" style="margin-top:12px;color:#333">Cloud data will then propagate to all devices on next load.</div>
-    </div>
-  </div>
-</div>
-
 
 <script>
-// ===== PASSWORD CONFIG =====
-const APP_UNLOCK_PASSWORD = "6565";       // App unlock for normal users
-const ADMIN_SYNC_PASSWORD = "123456";     // Admin cloud sync password
-
+/* ============================ CONFIG ============================ */
+const INITIAL_PASSWORD = "6565"; // local unlock password
+const CLOUD_PASSWORD = "123456"; // cloud sync admin password
 const STORAGE_KEY_PAIRS = "lotcalc_pairs_v2";
 const STORAGE_KEY_PASSWORD = "lotcalc_app_pass_v2";
 const STORAGE_KEY_UNLOCKED = "lotcalc_unlocked_v2";
 
-// Preloaded pairs (offline default / cloud base)
+/* ===== FIREBASE CONFIG ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
+  authDomain: "lotcalci.firebaseapp.com",
+  projectId: "lotcalci",
+  storageBucket: "lotcalci.firebasestorage.app",
+  messagingSenderId: "662389905318",
+  appId: "1:662389905318:web:3b9963ab853374ee606167"
+};
+// Initialize Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* ------------------ Preloaded Pairs ------------------ */
 let defaultPairs = {
   "EURUSD": { point:1.0, pip:10.0, commission:4 },
   "GBPUSD": { point:1.0, pip:10.0, commission:4 },
@@ -218,404 +207,112 @@ let defaultPairs = {
   "XAUUSD": { point:1.0, pip:10.0, commission:0 }
 };
 
-// Local storage pairs (device-specific)
-let localPairs = {};
-// Cloud pairs (global read-only for normal users)
-let cloudPairs = {};
-
+/* ------------------ Load LocalStorage ------------------ */
+let pairs;
 try {
   const saved = localStorage.getItem(STORAGE_KEY_PAIRS);
-  localPairs = saved ? JSON.parse(saved) : {};
-} catch (e) {
-  localPairs = {};
+  pairs = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultPairs));
+} catch(e){ pairs = JSON.parse(JSON.stringify(defaultPairs)); }
+
+if(!localStorage.getItem(STORAGE_KEY_PASSWORD)){
+  localStorage.setItem(STORAGE_KEY_PASSWORD, INITIAL_PASSWORD);
 }
 
-// Ensure password exists
-if (!localStorage.getItem(STORAGE_KEY_PASSWORD)) {
-  localStorage.setItem(STORAGE_KEY_PASSWORD, APP_UNLOCK_PASSWORD);
-}
-
-// --- Firebase initialization ---
-// TODO: Replace these config values with your actual Firebase project config
-const firebaseConfig = {
-  apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
-  authDomain: "lotcalci.firebaseapp.com",
-  projectId: "lotcalci",
-  storageBucket: "lotcalci.firebasestorage.app",
-  messagingSenderId: "662389905318",
-  appId: "1:662389905318:web:3b9963ab853374ee606167"
-};
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-// --- sync Download Cloud Pairs Into Your App (Read Only For Users)
-  async function loadCloudPairs() {
-  try {
-    const snapshot = await db.collection("cloudPairs").get();
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const name = data.name;
-      const point = data.point;
-      const pip = data.pip;
-
-      // Cloud pairs added to pairs list (read-only)
-      pairs[name] = {
-        point: point,
-        pip: pip,
-        commission: pairs[name]?.commission ?? 0
-      };
-    });
-
-    // Update dropdown after loading cloud data
-    populatePairs();
-    console.log("Cloud pairs loaded.");
-  } catch (e) {
-    console.error("Cloud pair load failed:", e);
-  }
-}
-
-
-// Utility: merge pairs for dropdown: cloud + default + local
-function getAllPairs() {
-  const merged = {};
-  // default
-  Object.keys(defaultPairs).forEach(k => merged[k] = defaultPairs[k]);
-  // cloud (override defaults if same name)
-  Object.keys(cloudPairs).forEach(k => merged[k] = cloudPairs[k]);
-  // local pairs (override both)
-  Object.keys(localPairs).forEach(k => merged[k] = localPairs[k]);
-  return merged;
-}
-
-function populatePairs() {
+/* ------------------ Populate Dropdown ------------------ */
+function populatePairs(){
   const sel = document.getElementById('pair');
-  sel.innerHTML = '';
+  sel.innerHTML='';
   const preferred = ["EURUSD","GBPUSD","AUDUSD","NZDUSD","EURJPY","AUDJPY","USDJPY","USDCAD","USDCHF","XAUUSD"];
-  const all = getAllPairs();
-  preferred.forEach(k=>{
-    if (all[k]) {
-      const o = document.createElement('option');
-      o.value = k; o.text = k + (cloudPairs[k] && !localPairs[k] && !defaultPairs[k] ? " (cloud)" : "");
-      sel.appendChild(o);
-    }
-  });
-  Object.keys(all).sort().forEach(k=>{
-    if (!preferred.includes(k)) {
-      const o = document.createElement('option');
-      o.value = k; o.text = k + (cloudPairs[k] && !localPairs[k] && !defaultPairs[k] ? " (cloud)" : "");
-      sel.appendChild(o);
-    }
-  });
+  preferred.forEach(k=>{ if(pairs[k]) sel.appendChild(new Option(k,k)); });
+  Object.keys(pairs).sort().forEach(k=>{ if(!preferred.includes(k)) sel.appendChild(new Option(k,k)); });
 }
-populatePairs();
 
-// ========== Lot calculation logic ==========
+/* ------------------ Lot Calculation ------------------ */
 function calculateLot(){
   const pairName = document.getElementById('pair').value;
   const lotType = document.getElementById('lotType').value;
   const risk = parseFloat(document.getElementById('risk').value);
   const sl = parseFloat(document.getElementById('sl').value);
-  if (!pairName || isNaN(risk) || isNaN(sl) || risk <= 0 || sl <= 0) {
-    document.getElementById('result').innerText = "Enter valid Risk and Stop-loss.";
-    return;
+  if(!pairName || isNaN(risk) || isNaN(sl) || risk<=0 || sl<=0){ document.getElementById('result').innerText="Enter valid Risk and Stop-loss."; return; }
+  const pair = pairs[pairName];
+  if(pair.commission===undefined || pair.commission===null){
+    let comm = parseFloat(prompt(`Enter commission for ${pairName} ($ per 1 lot):`))||0;
+    pair.commission = comm;
+    localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs));
   }
-  const pair = getAllPairs()[pairName];
-  if (!pair) {
-    document.getElementById('result').innerText = "Pair data missing.";
-    return;
+  let valuePerLot=0;
+  switch(lotType){
+    case "standardPoint": valuePerLot=pair.point; break;
+    case "miniPoint": valuePerLot=pair.point/10; break;
+    case "microPoint": valuePerLot=pair.point/100; break;
+    case "standardPip": valuePerLot=pair.pip; break;
+    case "miniPip": valuePerLot=pair.pip/10; break;
+    case "microPip": valuePerLot=pair.pip/100; break;
   }
-  let valuePerLot = 0;
-  switch (lotType) {
-    case "standardPoint": valuePerLot = pair.point; break;
-    case "miniPoint": valuePerLot = pair.point / 10; break;
-    case "microPoint": valuePerLot = pair.point / 100; break;
-    case "standardPip": valuePerLot = pair.pip; break;
-    case "miniPip": valuePerLot = pair.pip / 10; break;
-    case "microPip": valuePerLot = pair.pip / 100; break;
-  }
-  const lot = risk / (sl * valuePerLot + pair.commission);
-  document.getElementById('result').innerText = `Lot Size: ${lot.toFixed(2)} lots (Risk: $${risk}, SL: ${sl})`;
+  const lot = risk / (sl*valuePerLot + pair.commission);
+  document.getElementById('result').innerText=`Lot Size: ${lot.toFixed(2)} lots (Risk: $${risk}, SL: ${sl})`;
 }
 
-function quickClear(){
-  document.getElementById('risk').value = '';
-  document.getElementById('sl').value = '';
-  document.getElementById('result').innerText = '';
-}
+/* ------------------ Quick Clear ------------------ */
+function quickClear(){ document.getElementById('risk').value=''; document.getElementById('sl').value=''; document.getElementById('result').innerText=''; }
 
-// ========== Local pair add/edit/delete ==========
+/* ------------------ Add/Edit Modal ------------------ */
+function openEdit(){ document.getElementById('editModal').style.display='flex'; document.getElementById('modalPassword').value=''; document.getElementById('modalMsg').innerText=''; document.getElementById('editContent').style.display='none'; document.getElementById('deleteView').style.display='none'; document.getElementById('deleteList').innerHTML=''; document.getElementById('modalStep1').style.display='block'; }
+function closeEditModal(){ document.getElementById('editModal').style.display='none'; }
+function checkModalPassword(){ const typed=document.getElementById('modalPassword').value.trim(); const real=localStorage.getItem(STORAGE_KEY_PASSWORD)||INITIAL_PASSWORD; if(typed===real){ document.getElementById('editContent').style.display='block'; document.getElementById('modalMsg').innerText=''; document.getElementById('modalStep1').style.display='none'; const s=document.getElementById('pair').value; if(pairs[s]){ document.getElementById('newPair').value=s; document.getElementById('pointValue').value=pairs[s].point; document.getElementById('pipValue').value=pairs[s].pip; document.getElementById('commissionValue').value=pairs[s].commission; } else { document.getElementById('newPair').value=''; document.getElementById('pointValue').value=''; document.getElementById('pipValue').value=''; document.getElementById('commissionValue').value=''; } } else { document.getElementById('modalMsg').innerText='Wrong password!'; } }
+function addOrEditPair(){ const name=(document.getElementById('newPair').value||'').toUpperCase().trim(); const point=parseFloat(document.getElementById('pointValue').value); const pip=parseFloat(document.getElementById('pipValue').value); const commission=parseFloat(document.getElementById('commissionValue').value); if(!name || isNaN(point)||isNaN(pip)||isNaN(commission)){ alert("Enter pair name, point, pip and commission."); return; } pairs[name]={point,pip,commission}; try{ localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs)); }catch(e){} populatePairs(); alert(name+" saved."); closeEditModal(); }
 
-function openEdit() {
-  document.getElementById('editModal').style.display = 'flex';
-  document.getElementById('modalPassword').value = '';
-  document.getElementById('modalMsg').innerText = '';
-  document.getElementById('editContent').style.display = 'none';
-  document.getElementById('deleteView').style.display = 'none';
-  document.getElementById('deleteList').innerHTML = '';
-}
+/* ------------------ Delete User-added Pairs ------------------ */
+function openDeleteView(){ const deleteListDiv=document.getElementById('deleteList'); deleteListDiv.innerHTML=''; const userPairs=Object.keys(pairs).filter(k=>!defaultPairs.hasOwnProperty(k)).sort(); if(userPairs.length===0){ deleteListDiv.innerHTML='<div class="tiny">No user-added pairs to delete.</div>'; } else { userPairs.forEach(sym=>{ const item=document.createElement('div'); item.className='delete-item'; const left=document.createElement('div'); left.style.display='flex'; left.style.alignItems='center'; const cb=document.createElement('input'); cb.type='checkbox'; cb.value=sym; cb.style.marginRight='10px'; left.appendChild(cb); const label=document.createElement('div'); label.innerText=sym; left.appendChild(label); item.appendChild(left); deleteListDiv.appendChild(item); }); } document.getElementById('deleteView').style.display='block'; document.getElementById('deleteView').scrollIntoView({behavior:'smooth'}); }
+function closeDeleteView(){ document.getElementById('deleteView').style.display='none'; document.getElementById('deleteList').innerHTML=''; }
+function deleteSelected(){ const deleteListDiv=document.getElementById('deleteList'); const checkboxes=deleteListDiv.querySelectorAll('input[type="checkbox"]:checked'); if(checkboxes.length===0){ alert("No pairs selected."); return; } const toDelete=Array.from(checkboxes).map(cb=>cb.value); if(!confirm("Delete selected pairs? This cannot be undone.")) return; let changed=false; toDelete.forEach(sym=>{ if(pairs[sym]){ delete pairs[sym]; changed=true; } }); if(changed){ try{ localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs)); }catch(e){} populatePairs(); alert("Deleted: "+toDelete.join(", ")); } else{ alert("Nothing deleted."); } closeDeleteView(); }
 
-function closeEditModal() {
-  document.getElementById('editModal').style.display = 'none';
-}
-
-function checkModalPassword() {
-  const typed = (document.getElementById('modalPassword').value || '').trim();
-  const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || APP_UNLOCK_PASSWORD;
-  if (typed === real) {
-    document.getElementById('editContent').style.display = 'block';
-    document.getElementById('modalMsg').innerText = '';
-    document.getElementById('modalStep1').style.display = 'none';
-    const s = document.getElementById('pair').value;
-    if (localPairs[s]) {
-      document.getElementById('newPair').value = s;
-      document.getElementById('pointValue').value = localPairs[s].point;
-      document.getElementById('pipValue').value = localPairs[s].pip;
-      document.getElementById('commissionValue').value = localPairs[s].commission;
-    } else {
-      document.getElementById('newPair').value = '';
-      document.getElementById('pointValue').value = '';
-      document.getElementById('pipValue').value = '';
-      document.getElementById('commissionValue').value = '';
-    }
-  } else {
-    document.getElementById('modalMsg').innerText = 'Wrong password!';
-  }
-}
-
-function addOrEditLocalPair(){
-  const name = (document.getElementById('newPair').value || '').toUpperCase().trim();
-  const point = parseFloat(document.getElementById('pointValue').value);
-  const pip = parseFloat(document.getElementById('pipValue').value);
-  const commission = parseFloat(document.getElementById('commissionValue').value);
-  if (!name || isNaN(point) || isNaN(pip) || isNaN(commission)) {
-    alert("Enter pair name, point, pip and commission.");
-    return;
-  }
-  localPairs[name] = { point, pip, commission };
-  try { localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(localPairs)); } catch(e){}
-  populatePairs();
-  alert(name + " saved (local).");
-  closeEditModal();
-}
-
-function openDeleteView(){
-  const deleteListDiv = document.getElementById('deleteList');
-  deleteListDiv.innerHTML = '';
-  const userKeys = Object.keys(localPairs).sort();
-  if (userKeys.length === 0) {
-    deleteListDiv.innerHTML = '<div class="tiny">No user-added pairs to delete.</div>';
-  } else {
-    userKeys.forEach(sym => {
-      const item = document.createElement('div');
-      item.className = 'delete-item';
-      const left = document.createElement('div');
-      left.style.display = 'flex';
-      left.style.alignItems = 'center';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox'; cb.value = sym; cb.style.marginRight = '10px';
-      left.appendChild(cb);
-      const label = document.createElement('div');
-      label.innerText = sym;
-      left.appendChild(label);
-      item.appendChild(left);
-      deleteListDiv.appendChild(item);
-    });
-  }
-  document.getElementById('deleteView').style.display = 'block';
-  document.getElementById('deleteView').scrollIntoView({behavior:'smooth'});
-}
-
-function closeDeleteView() {
-  document.getElementById('deleteView').style.display = 'none';
-  document.getElementById('deleteList').innerHTML = '';
-}
-
-function deleteSelected(){
-  const deleteListDiv = document.getElementById('deleteList');
-  const checkboxes = deleteListDiv.querySelectorAll('input[type="checkbox"]:checked');
-  if (checkboxes.length === 0) { alert("No pairs selected."); return; }
-  const toDelete = Array.from(checkboxes).map(cb => cb.value);
-  if (!confirm("Delete selected pairs? This cannot be undone.")) return;
-  let changed = false;
-  toDelete.forEach(sym => {
-    if (localPairs[sym]) {
-      delete localPairs[sym];
-      changed = true;
-    }
-  });
-  if (changed) {
-    try { localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(localPairs)); } catch(e){}
-    populatePairs();
-    alert("Deleted (local): " + toDelete.join(", "));
-  } else {
-    alert("Nothing deleted.");
-  }
-  closeDeleteView();
-}
-
-// ========== Password & Lock logic ==========
-function isUnlocked(){ return localStorage.getItem(STORAGE_KEY_UNLOCKED) === "true"; }
-function unlockApp(){
-  const typed = (document.getElementById('passwordInput').value || '').trim();
-  const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || APP_UNLOCK_PASSWORD;
-  if (typed === real){
-    localStorage.setItem(STORAGE_KEY_UNLOCKED, "true");
-    hideLock();
-  } else {
-    document.getElementById('lockMsg').innerText = "Wrong password. Try again.";
-  }
-}
-function hideLock(){
-  const lock = document.getElementById('lockScreen');
-  if (lock) lock.style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'inline-block';
-}
-function showLock(){
-  const lock = document.getElementById('lockScreen');
-  if (lock) lock.style.display = 'flex';
-  document.getElementById('logoutBtn').style.display = 'none';
-}
-function logout(){
-  if (confirm("Logout will lock the app on this device. Continue?")){
-    localStorage.removeItem(STORAGE_KEY_UNLOCKED);
-    showLock();
-  }
-}
-function changePassword(){
-  const curr = prompt("Enter current password:");
-  if (curr === null) return;
-  const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || APP_UNLOCK_PASSWORD;
-  if (curr !== real){ alert("Current password incorrect."); return; }
-  const np = prompt("Enter new password (min 4 chars):");
-  if (!np || np.length < 1){ alert("Invalid password."); return; }
-  localStorage.setItem(STORAGE_KEY_PASSWORD, np);
-  alert("Password updated.");
-}
+/* ------------------ Lock / Password ------------------ */
+function isUnlocked(){ return localStorage.getItem(STORAGE_KEY_UNLOCKED)==="true"; }
+function unlockApp(){ const typed=document.getElementById('passwordInput').value.trim(); const real=localStorage.getItem(STORAGE_KEY_PASSWORD)||INITIAL_PASSWORD; if(typed===real){ localStorage.setItem(STORAGE_KEY_UNLOCKED,"true"); hideLock(); } else{ document.getElementById('lockMsg').innerText="Wrong password. Try again."; } }
+function hideLock(){ const lock=document.getElementById('lockScreen'); if(lock) lock.style.display='none'; document.getElementById('logoutBtn').style.display='inline-block'; }
+function showLock(){ const lock=document.getElementById('lockScreen'); if(lock) lock.style.display='flex'; document.getElementById('logoutBtn').style.display='none'; }
+function logout(){ if(confirm("Logout will lock the app on this device. Continue?")){ localStorage.removeItem(STORAGE_KEY_UNLOCKED); showLock(); } }
+function changePassword(){ const curr=prompt("Enter current password:"); if(curr===null) return; const real=localStorage.getItem(STORAGE_KEY_PASSWORD)||INITIAL_PASSWORD; if(curr!==real){ alert("Current password incorrect."); return; } const np=prompt("Enter new password (min 4 chars):"); if(!np||np.length<1){ alert("Invalid password."); return; } localStorage.setItem(STORAGE_KEY_PASSWORD,np); alert("Password updated."); }
 function showInfo(){ alert("Password asked only first time on a device. To re-lock use Logout. If you lose password you may reset app data or reinstall."); }
 
-document.addEventListener('DOMContentLoaded', ()=>{
-  if (isUnlocked()) hideLock(); else showLock();
-  loadCloudPairs();   // <--- new line
-});
-
-// ========== Cloud Sync: Admin ==========
-function openAdminSync(){
-  document.getElementById('adminModal').style.display = 'flex';
-  document.getElementById('adminPassword').value = '';
-  document.getElementById('adminMsg').innerText = '';
-  document.getElementById('adminContent').style.display = 'none';
+/* ------------------ Cloud Sync ------------------ */
+function syncCloud(){
+  const pwd = prompt("Enter cloud admin password:");
+  if(pwd!==CLOUD_PASSWORD){ alert("Incorrect cloud password."); return; }
+  const userPairs = Object.keys(pairs).filter(k=>!defaultPairs.hasOwnProperty(k));
+  userPairs.forEach(sym=>{
+    const d=pairs[sym];
+    db.collection("sharedPairs").doc(sym).set(d);
+  });
+  alert("User-added pairs synced to cloud (read-only for others).");
 }
 
-function closeAdminModal(){
-  document.getElementById('adminModal').style.display = 'none';
-}
-
-function checkAdminPassword(){
-  const typed = (document.getElementById('adminPassword').value || '').trim();
-  if (typed === ADMIN_SYNC_PASSWORD) {
-    document.getElementById('adminContent').style.display = 'block';
-    document.getElementById('adminStep1').style.display = 'none';
-  } else {
-    document.getElementById('adminMsg').innerText = 'Wrong admin password!';
-  }
-}
-
-async function downloadCloudToLocal(){
-  try {
-    const doc = await db.collection("pairs").doc("global").get();
-    if (doc.exists) {
-      cloudPairs = doc.data().pairs || {};
-      populatePairs();
-      alert("Cloud pairs loaded.");
-    } else {
-      alert("No cloud data found.");
-    }
-  } catch (e) {
-    alert("Error fetching cloud data: " + e.message);
-  }
-  closeAdminModal();
-}
-
-async function uploadLocalToCloud(){
-  // Combine default, local, cloud as you want — here we upload all local + default (your decision)
-  const toUpload = Object.assign({}, defaultPairs, localPairs);
-  try {
-    await db.collection("pairs").doc("global").set({ pairs: toUpload, adminKey: ADMIN_SYNC_PASSWORD });
-    alert("Uploaded pairs to cloud.");
-  } catch (e) {
-    alert("Error uploading: " + e.message);
-  }
-  closeAdminModal();
-}
-
-// ====================
-// On app load — fetch cloud data (read it for everyone)
-async function loadCloudOnStart(){
-  try {
-    const doc = await db.collection("pairs").doc("global").get();
-    if (doc.exists) {
-      cloudPairs = doc.data().pairs || {};
-    }
-  } catch(e) {
-    console.warn("Could not fetch cloud pairs:", e);
-  } finally {
+async function loadCloudPairs(){
+  try{
+    const snapshot = await db.collection("sharedPairs").get();
+    snapshot.forEach(doc=>{
+      const data = doc.data();
+      if(!pairs[doc.id]) pairs[doc.id] = data;
+    });
     populatePairs();
-  }
-}
-loadCloudOnStart();
-
-// ========== Fetch latest pip/point values (no change) ==========
-const fetchSources = [
-  // add your real API endpoints here
-];
-async function fetchLatest(){
-  const orig = document.getElementById('reloadBtn').innerText;
-  document.getElementById('reloadBtn').innerText = 'Fetching...';
-  try {
-    if (!navigator.onLine) throw new Error("Offline");
-    let updated = false;
-    for (let src of fetchSources){
-      try {
-        const res = await fetch(src, { method: 'GET' });
-        if (!res.ok) continue;
-        const data = await res.json();
-        if (typeof data === 'object'){
-          Object.keys(data).forEach(sym=>{
-            const p = data[sym];
-            if (!p.point || !p.pip) return;
-            // Update in cloudPairs / localPairs appropriately
-            if (cloudPairs[sym]) {
-              cloudPairs[sym].point = p.point;
-              cloudPairs[sym].pip = p.pip;
-            } else if (localPairs[sym]) {
-              localPairs[sym].point = p.point;
-              localPairs[sym].pip = p.pip;
-            }
-          });
-          updated = true;
-          break;
-        }
-      } catch(e){}
-    }
-    if (updated) {
-      populatePairs();
-      alert("Pip/point values updated from online source.");
-    } else {
-      alert("Could not fetch live values — using saved values.");
-    }
-  } catch (e) {
-    alert("Fetch failed: " + (e.message || e));
-  } finally {
-    document.getElementById('reloadBtn').innerText = orig;
-  }
+  }catch(e){ console.error("Failed to load cloud pairs:",e); }
 }
 
-// ========== Service worker registration (optional) ==========
-if ('serviceWorker' in navigator) {
-  try { navigator.serviceWorker.register('service-worker.js?v=1.0.0').catch(()=>{}); } catch(e){}
-}
-  
+/* ------------------ Fetch Latest Placeholder ------------------ */
+const fetchSources = [];
+async function fetchLatest(){ const orig=document.getElementById('reloadBtn').innerText; document.getElementById('reloadBtn').innerText='Fetching...'; try{ if(!navigator.onLine) throw new Error("Offline"); let updated=false; for(let src of fetchSources){ try{ const res=await fetch(src,{method:'GET'}); if(!res.ok) continue; const data=await res.json(); if(typeof data==='object'){ Object.keys(data).forEach(sym=>{ if(!pairs[sym]) pairs[sym]={point:data[sym].point,pip:data[sym].pip,commission:(pairs[sym]&&pairs[sym].commission)||0}; else{ pairs[sym].point=data[sym].point; pairs[sym].pip=data[sym].pip; } }); localStorage.setItem(STORAGE_KEY_PAIRS,JSON.stringify(pairs)); updated=true; break; } }catch(e){} } if(updated){ populatePairs(); alert("Pip/point values updated from online source."); } else{ alert("Could not fetch live values. Using saved values."); } }catch(e){ alert("Fetch failed: "+(e.message||e)); } finally{ document.getElementById('reloadBtn').innerText=orig; } }
+
+/* ------------------ Service Worker ------------------ */
+if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('service-worker.js?v=1.0.2').catch(()=>{}); }catch(e){} }
+
+/* ------------------ On Load ------------------ */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  if(isUnlocked()) hideLock(); else showLock();
+  await loadCloudPairs();
+  populatePairs();
+});
 </script>
+
 </body>
 </html>
