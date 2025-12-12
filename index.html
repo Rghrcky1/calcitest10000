@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Forex Lot Calculator (Hybrid PWA)</title>
+<title>Forex Lot Calculator (Hybrid PWA + Cloud)</title>
 
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.png">
@@ -44,20 +44,16 @@ button.secondary{background:#eee;color:#111}
 .modal-content{background:#fff;padding:16px;border-radius:12px;max-width:420px;width:92%}
 .modal-content h3{margin-top:0}
 
-/* Bulk delete list */
-.delete-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;margin-top:8px;background:#fafafa}
-.delete-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
-.delete-item:last-child{border-bottom:0}
+/* Bulk delete / sync list */
+.bulk-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;margin-top:8px}
+.bulk-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
+.bulk-item:last-child{border-bottom:0}
 
 /* small improvements for tiny screens */
 @media (min-width:600px){ .wrap{margin-top:80px} h1{font-size:22px} }
 </style>
 </head>
 <body>
-
-<!-- Firebase Scripts -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 
 <!-- top controls -->
 <button id="reloadBtn" class="reload-btn" onclick="fetchLatest()" title="Reload / Fetch latest pip values">Reload</button>
@@ -113,14 +109,13 @@ button.secondary{background:#eee;color:#111}
 
     <div style="display:flex;gap:8px;margin-top:10px">
       <button class="secondary" onclick="openEdit()">Add / Edit Pair</button>
-      <button class="secondary" onclick="syncCloud()" style="flex:0 0 86px">Sync Cloud</button>
     </div>
 
     <div class="footer">Tip: Password asked only first time on each device. Use Logout to re-lock. Reload fetches live pip values if available.</div>
   </div>
 </div>
 
-<!-- modal for add/edit pair (password required) -->
+<!-- modal for add/edit pair -->
 <div id="editModal" class="modal" aria-hidden="true">
   <div class="modal-content">
     <h3>Add / Edit Pair (Password Required)</h3>
@@ -145,42 +140,52 @@ button.secondary{background:#eee;color:#111}
       <input id="pipValue" type="number" placeholder="Value per pip for 1 standard lot">
       <label>Commission ($ per 1 lot)</label>
       <input id="commissionValue" type="number" placeholder="Commission per 1 lot">
+
       <div style="display:flex;gap:8px;margin-top:10px">
         <button onclick="addOrEditPair()">Save Pair</button>
         <button class="secondary" onclick="closeEditModal()">Close</button>
       </div>
 
-      <div style="margin-top:14px;border-top:1px solid #eee;padding-top:12px">
-        <!-- Bulk delete entry point (inside modal as requested) -->
-        <div style="display:flex;gap:8px;">
-          <button onclick="openDeleteView()" class="secondary" style="flex:1;background:#fff;color:#111;border:1px solid #d6dbe6">Delete Pairs</button>
-          <button class="secondary" onclick="changePassword()" style="flex:1">Change Password</button>
-        </div>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button class="secondary" onclick="openSyncCloud()">Sync Cloud</button>
+        <button class="secondary" onclick="openEditDelete()">Delete/Edit</button>
+      </div>
 
-        <!-- Delete view (hidden initially) -->
-        <div id="deleteView" style="display:none;margin-top:12px">
-          <div style="font-weight:700;margin-bottom:8px">Delete user-added pairs</div>
-          <div class="delete-list" id="deleteList"></div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button onclick="deleteSelected()" style="flex:1;background:#d9534f">Delete Selected</button>
-            <button class="secondary" onclick="closeDeleteView()" style="flex:1">Back</button>
-          </div>
-          <div class="tiny" style="margin-top:8px;color:#666">Default/preloaded pairs are locked and won't appear here.</div>
+      <!-- Sync cloud modal part -->
+      <div id="syncCloudArea" style="display:none;margin-top:12px">
+        <div style="margin-bottom:6px;font-weight:700">Select pairs to sync to cloud:</div>
+        <div class="bulk-list" id="syncList"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button onclick="syncSelectedToCloud()" style="flex:1;background:#28a745">Sync Selected</button>
+          <button class="secondary" onclick="closeSyncCloud()" style="flex:1">Cancel</button>
         </div>
       </div>
+
+      <!-- Edit/Delete list -->
+      <div id="editDeleteArea" style="display:none;margin-top:12px">
+        <div class="bulk-list" id="editDeleteList"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="secondary" onclick="closeEditDelete()" style="flex:1">Close</button>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+
 <script>
 /* ============================ CONFIG ============================ */
-const INITIAL_PASSWORD = "6565"; // local unlock password
-const CLOUD_PASSWORD = "123456"; // cloud sync admin password
+const INITIAL_PASSWORD = "6565";
+const CLOUD_PASSWORD = "123456";
 const STORAGE_KEY_PAIRS = "lotcalc_pairs_v2";
 const STORAGE_KEY_PASSWORD = "lotcalc_app_pass_v2";
 const STORAGE_KEY_UNLOCKED = "lotcalc_unlocked_v2";
 
-/* ===== FIREBASE CONFIG ===== */
+/* ===== FIREBASE CONFIG (you already inserted keys) ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
   authDomain: "lotcalci.firebaseapp.com",
@@ -189,11 +194,10 @@ const firebaseConfig = {
   messagingSenderId: "662389905318",
   appId: "1:662389905318:web:3b9963ab853374ee606167"
 };
-// Initialize Firebase
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-/* ------------------ Preloaded Pairs ------------------ */
+/* Preloaded pairs */
 let defaultPairs = {
   "EURUSD": { point:1.0, pip:10.0, commission:4 },
   "GBPUSD": { point:1.0, pip:10.0, commission:4 },
@@ -207,112 +211,161 @@ let defaultPairs = {
   "XAUUSD": { point:1.0, pip:10.0, commission:0 }
 };
 
-/* ------------------ Load LocalStorage ------------------ */
 let pairs;
 try {
   const saved = localStorage.getItem(STORAGE_KEY_PAIRS);
   pairs = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultPairs));
 } catch(e){ pairs = JSON.parse(JSON.stringify(defaultPairs)); }
 
-if(!localStorage.getItem(STORAGE_KEY_PASSWORD)){
+if (!localStorage.getItem(STORAGE_KEY_PASSWORD)) {
   localStorage.setItem(STORAGE_KEY_PASSWORD, INITIAL_PASSWORD);
 }
 
-/* ------------------ Populate Dropdown ------------------ */
+/* ------------------- Populate dropdown ------------------- */
 function populatePairs(){
   const sel = document.getElementById('pair');
-  sel.innerHTML='';
+  sel.innerHTML = '';
   const preferred = ["EURUSD","GBPUSD","AUDUSD","NZDUSD","EURJPY","AUDJPY","USDJPY","USDCAD","USDCHF","XAUUSD"];
-  preferred.forEach(k=>{ if(pairs[k]) sel.appendChild(new Option(k,k)); });
-  Object.keys(pairs).sort().forEach(k=>{ if(!preferred.includes(k)) sel.appendChild(new Option(k,k)); });
+  preferred.forEach(k=>{ if(pairs[k]){ let o=document.createElement('option'); o.value=k;o.text=k; sel.appendChild(o); } });
+  Object.keys(pairs).sort().forEach(k=>{ if(!preferred.includes(k)){ let o=document.createElement('option'); o.value=k;o.text=k; sel.appendChild(o); }});
 }
+populatePairs();
 
-/* ------------------ Lot Calculation ------------------ */
+/* ------------------- Lot calculation ------------------- */
 function calculateLot(){
   const pairName = document.getElementById('pair').value;
   const lotType = document.getElementById('lotType').value;
   const risk = parseFloat(document.getElementById('risk').value);
   const sl = parseFloat(document.getElementById('sl').value);
-  if(!pairName || isNaN(risk) || isNaN(sl) || risk<=0 || sl<=0){ document.getElementById('result').innerText="Enter valid Risk and Stop-loss."; return; }
+  if(!pairName || isNaN(risk) || isNaN(sl) || risk<=0 || sl<=0){
+    document.getElementById('result').innerText = "Enter valid Risk and Stop-loss."; return;
+  }
   const pair = pairs[pairName];
-  if(pair.commission===undefined || pair.commission===null){
-    let comm = parseFloat(prompt(`Enter commission for ${pairName} ($ per 1 lot):`))||0;
-    pair.commission = comm;
-    localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs));
-  }
-  let valuePerLot=0;
+  if(pair.commission===undefined){ pair.commission=0; }
+  let valuePerLot = 0;
   switch(lotType){
-    case "standardPoint": valuePerLot=pair.point; break;
-    case "miniPoint": valuePerLot=pair.point/10; break;
-    case "microPoint": valuePerLot=pair.point/100; break;
-    case "standardPip": valuePerLot=pair.pip; break;
-    case "miniPip": valuePerLot=pair.pip/10; break;
-    case "microPip": valuePerLot=pair.pip/100; break;
+    case "standardPoint": valuePerLot = pair.point; break;
+    case "miniPoint": valuePerLot = pair.point/10; break;
+    case "microPoint": valuePerLot = pair.point/100; break;
+    case "standardPip": valuePerLot = pair.pip; break;
+    case "miniPip": valuePerLot = pair.pip/10; break;
+    case "microPip": valuePerLot = pair.pip/100; break;
   }
-  const lot = risk / (sl*valuePerLot + pair.commission);
-  document.getElementById('result').innerText=`Lot Size: ${lot.toFixed(2)} lots (Risk: $${risk}, SL: ${sl})`;
+  const lot = risk/(sl*valuePerLot + pair.commission);
+  document.getElementById('result').innerText = `Lot Size: ${lot.toFixed(2)} lots (Risk: $${risk}, SL: ${sl})`;
 }
 
-/* ------------------ Quick Clear ------------------ */
-function quickClear(){ document.getElementById('risk').value=''; document.getElementById('sl').value=''; document.getElementById('result').innerText=''; }
+/* ------------------- Quick clear ------------------- */
+function quickClear(){
+  document.getElementById('risk').value=''; document.getElementById('sl').value=''; document.getElementById('result').innerText='';
+}
 
-/* ------------------ Add/Edit Modal ------------------ */
-function openEdit(){ document.getElementById('editModal').style.display='flex'; document.getElementById('modalPassword').value=''; document.getElementById('modalMsg').innerText=''; document.getElementById('editContent').style.display='none'; document.getElementById('deleteView').style.display='none'; document.getElementById('deleteList').innerHTML=''; document.getElementById('modalStep1').style.display='block'; }
-function closeEditModal(){ document.getElementById('editModal').style.display='none'; }
-function checkModalPassword(){ const typed=document.getElementById('modalPassword').value.trim(); const real=localStorage.getItem(STORAGE_KEY_PASSWORD)||INITIAL_PASSWORD; if(typed===real){ document.getElementById('editContent').style.display='block'; document.getElementById('modalMsg').innerText=''; document.getElementById('modalStep1').style.display='none'; const s=document.getElementById('pair').value; if(pairs[s]){ document.getElementById('newPair').value=s; document.getElementById('pointValue').value=pairs[s].point; document.getElementById('pipValue').value=pairs[s].pip; document.getElementById('commissionValue').value=pairs[s].commission; } else { document.getElementById('newPair').value=''; document.getElementById('pointValue').value=''; document.getElementById('pipValue').value=''; document.getElementById('commissionValue').value=''; } } else { document.getElementById('modalMsg').innerText='Wrong password!'; } }
-function addOrEditPair(){ const name=(document.getElementById('newPair').value||'').toUpperCase().trim(); const point=parseFloat(document.getElementById('pointValue').value); const pip=parseFloat(document.getElementById('pipValue').value); const commission=parseFloat(document.getElementById('commissionValue').value); if(!name || isNaN(point)||isNaN(pip)||isNaN(commission)){ alert("Enter pair name, point, pip and commission."); return; } pairs[name]={point,pip,commission}; try{ localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs)); }catch(e){} populatePairs(); alert(name+" saved."); closeEditModal(); }
-
-/* ------------------ Delete User-added Pairs ------------------ */
-function openDeleteView(){ const deleteListDiv=document.getElementById('deleteList'); deleteListDiv.innerHTML=''; const userPairs=Object.keys(pairs).filter(k=>!defaultPairs.hasOwnProperty(k)).sort(); if(userPairs.length===0){ deleteListDiv.innerHTML='<div class="tiny">No user-added pairs to delete.</div>'; } else { userPairs.forEach(sym=>{ const item=document.createElement('div'); item.className='delete-item'; const left=document.createElement('div'); left.style.display='flex'; left.style.alignItems='center'; const cb=document.createElement('input'); cb.type='checkbox'; cb.value=sym; cb.style.marginRight='10px'; left.appendChild(cb); const label=document.createElement('div'); label.innerText=sym; left.appendChild(label); item.appendChild(left); deleteListDiv.appendChild(item); }); } document.getElementById('deleteView').style.display='block'; document.getElementById('deleteView').scrollIntoView({behavior:'smooth'}); }
-function closeDeleteView(){ document.getElementById('deleteView').style.display='none'; document.getElementById('deleteList').innerHTML=''; }
-function deleteSelected(){ const deleteListDiv=document.getElementById('deleteList'); const checkboxes=deleteListDiv.querySelectorAll('input[type="checkbox"]:checked'); if(checkboxes.length===0){ alert("No pairs selected."); return; } const toDelete=Array.from(checkboxes).map(cb=>cb.value); if(!confirm("Delete selected pairs? This cannot be undone.")) return; let changed=false; toDelete.forEach(sym=>{ if(pairs[sym]){ delete pairs[sym]; changed=true; } }); if(changed){ try{ localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs)); }catch(e){} populatePairs(); alert("Deleted: "+toDelete.join(", ")); } else{ alert("Nothing deleted."); } closeDeleteView(); }
-
-/* ------------------ Lock / Password ------------------ */
+/* ------------------- Lock logic ------------------- */
 function isUnlocked(){ return localStorage.getItem(STORAGE_KEY_UNLOCKED)==="true"; }
-function unlockApp(){ const typed=document.getElementById('passwordInput').value.trim(); const real=localStorage.getItem(STORAGE_KEY_PASSWORD)||INITIAL_PASSWORD; if(typed===real){ localStorage.setItem(STORAGE_KEY_UNLOCKED,"true"); hideLock(); } else{ document.getElementById('lockMsg').innerText="Wrong password. Try again."; } }
-function hideLock(){ const lock=document.getElementById('lockScreen'); if(lock) lock.style.display='none'; document.getElementById('logoutBtn').style.display='inline-block'; }
-function showLock(){ const lock=document.getElementById('lockScreen'); if(lock) lock.style.display='flex'; document.getElementById('logoutBtn').style.display='none'; }
+function unlockApp(){
+  const typed=document.getElementById('passwordInput').value.trim();
+  const real=localStorage.getItem(STORAGE_KEY_PASSWORD)||INITIAL_PASSWORD;
+  if(typed===real){ localStorage.setItem(STORAGE_KEY_UNLOCKED,"true"); hideLock(); }
+  else{ document.getElementById('lockMsg').innerText="Wrong password. Try again."; }
+}
+function hideLock(){ document.getElementById('lockScreen').style.display='none'; document.getElementById('logoutBtn').style.display='inline-block'; }
+function showLock(){ document.getElementById('lockScreen').style.display='flex'; document.getElementById('logoutBtn').style.display='none'; }
 function logout(){ if(confirm("Logout will lock the app on this device. Continue?")){ localStorage.removeItem(STORAGE_KEY_UNLOCKED); showLock(); } }
-function changePassword(){ const curr=prompt("Enter current password:"); if(curr===null) return; const real=localStorage.getItem(STORAGE_KEY_PASSWORD)||INITIAL_PASSWORD; if(curr!==real){ alert("Current password incorrect."); return; } const np=prompt("Enter new password (min 4 chars):"); if(!np||np.length<1){ alert("Invalid password."); return; } localStorage.setItem(STORAGE_KEY_PASSWORD,np); alert("Password updated."); }
-function showInfo(){ alert("Password asked only first time on a device. To re-lock use Logout. If you lose password you may reset app data or reinstall."); }
+function showInfo(){ alert("Password asked only first time on a device. To re-lock use Logout."); }
 
-/* ------------------ Cloud Sync ------------------ */
-function syncCloud(){
-  const pwd = prompt("Enter cloud admin password:");
-  if(pwd!==CLOUD_PASSWORD){ alert("Incorrect cloud password."); return; }
-  const userPairs = Object.keys(pairs).filter(k=>!defaultPairs.hasOwnProperty(k));
-  userPairs.forEach(sym=>{
-    const d=pairs[sym];
-    db.collection("sharedPairs").doc(sym).set(d);
+/* ------------------- Add/Edit Modal ------------------- */
+function openEdit(){
+  document.getElementById('editModal').style.display='flex';
+  document.getElementById('modalPassword').value=''; document.getElementById('modalMsg').innerText='';
+  document.getElementById('editContent').style.display='none';
+  document.getElementById('syncCloudArea').style.display='none';
+  document.getElementById('editDeleteArea').style.display='none';
+  document.getElementById('modalStep1').style.display='block';
+}
+function closeEditModal(){ document.getElementById('editModal').style.display='none'; }
+function checkModalPassword(){
+  const typed=document.getElementById('modalPassword').value.trim();
+  const real=localStorage.getItem(STORAGE_KEY_PASSWORD)||INITIAL_PASSWORD;
+  if(typed===real){
+    document.getElementById('editContent').style.display='block';
+    document.getElementById('modalStep1').style.display='none';
+    const s=document.getElementById('pair').value;
+    if(pairs[s]){ document.getElementById('newPair').value=s; document.getElementById('pointValue').value=pairs[s].point; document.getElementById('pipValue').value=pairs[s].pip; document.getElementById('commissionValue').value=pairs[s].commission; }
+    else{ document.getElementById('newPair').value=''; document.getElementById('pointValue').value=''; document.getElementById('pipValue').value=''; document.getElementById('commissionValue').value=''; }
+  } else { document.getElementById('modalMsg').innerText='Wrong password!'; }
+}
+function addOrEditPair(){
+  const name=document.getElementById('newPair').value.toUpperCase().trim();
+  const point=parseFloat(document.getElementById('pointValue').value);
+  const pip=parseFloat(document.getElementById('pipValue').value);
+  const commission=parseFloat(document.getElementById('commissionValue').value);
+  if(!name||isNaN(point)||isNaN(pip)||isNaN(commission)){ alert("Enter pair name, point, pip and commission."); return; }
+  pairs[name]={point,pip,commission}; localStorage.setItem(STORAGE_KEY_PAIRS,JSON.stringify(pairs));
+  populatePairs(); alert(name+" saved.");
+}
+
+/* ------------------- Sync Cloud ------------------- */
+function openSyncCloud(){
+  const pwd=prompt("Enter Cloud Password:");
+  if(pwd!==CLOUD_PASSWORD){ alert("Wrong cloud password."); return; }
+  const listDiv=document.getElementById('syncList'); listDiv.innerHTML='';
+  Object.keys(pairs).forEach(k=>{
+    const div=document.createElement('div'); div.className='bulk-item';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.value=k;
+    const lbl=document.createElement('span'); lbl.innerText=k+" (Local)";
+    div.appendChild(cb); div.appendChild(lbl); listDiv.appendChild(div);
   });
-  alert("User-added pairs synced to cloud (read-only for others).");
+  document.getElementById('syncCloudArea').style.display='block';
+}
+function closeSyncCloud(){ document.getElementById('syncCloudArea').style.display='none'; }
+async function syncSelectedToCloud(){
+  const checkboxes=document.querySelectorAll('#syncList input[type=checkbox]:checked');
+  if(checkboxes.length===0){ alert("Select pairs first."); return; }
+  for(let cb of checkboxes){
+    const k=cb.value; await db.collection('forex_pairs').doc(k).set(pairs[k]);
+  }
+  alert("Selected pairs synced to cloud."); closeSyncCloud();
 }
 
-async function loadCloudPairs(){
-  try{
-    const snapshot = await db.collection("sharedPairs").get();
-    snapshot.forEach(doc=>{
-      const data = doc.data();
-      if(!pairs[doc.id]) pairs[doc.id] = data;
-    });
-    populatePairs();
-  }catch(e){ console.error("Failed to load cloud pairs:",e); }
+/* ------------------- Edit/Delete ------------------- */
+function openEditDelete(){
+  const pwd=prompt("Enter Cloud Password (for cloud pairs editing/deleting):","");
+  const listDiv=document.getElementById('editDeleteList'); listDiv.innerHTML='';
+  Object.keys(pairs).forEach(k=>{
+    const div=document.createElement('div'); div.className='bulk-item';
+    const lbl=document.createElement('span'); 
+    if(k in defaultPairs){ lbl.innerText=k+" (Cloud)"; } else { lbl.innerText=k+" (Local)"; }
+    const editBtn=document.createElement('button'); editBtn.innerText="Edit"; editBtn.style.marginRight="6px";
+    editBtn.onclick=()=>{ editPair(k, pwd); };
+    const delBtn=document.createElement('button'); delBtn.innerText="Delete";
+    delBtn.onclick=()=>{ deletePair(k, pwd); };
+    div.appendChild(lbl); div.appendChild(editBtn); div.appendChild(delBtn); listDiv.appendChild(div);
+  });
+  document.getElementById('editDeleteArea').style.display='block';
+}
+function closeEditDelete(){ document.getElementById('editDeleteArea').style.display='none'; }
+function editPair(name, pwd){
+  if(defaultPairs[name] && pwd!==CLOUD_PASSWORD){ alert("Cloud password required."); return; }
+  document.getElementById('newPair').value=name;
+  document.getElementById('pointValue').value=pairs[name].point;
+  document.getElementById('pipValue').value=pairs[name].pip;
+  document.getElementById('commissionValue').value=pairs[name].commission;
+}
+function deletePair(name, pwd){
+  if(defaultPairs[name] && pwd!==CLOUD_PASSWORD){ alert("Cloud password required."); return; }
+  if(confirm("Delete "+name+"?")){ delete pairs[name]; localStorage.setItem(STORAGE_KEY_PAIRS,JSON.stringify(pairs)); populatePairs(); alert(name+" deleted."); }
 }
 
-/* ------------------ Fetch Latest Placeholder ------------------ */
-const fetchSources = [];
-async function fetchLatest(){ const orig=document.getElementById('reloadBtn').innerText; document.getElementById('reloadBtn').innerText='Fetching...'; try{ if(!navigator.onLine) throw new Error("Offline"); let updated=false; for(let src of fetchSources){ try{ const res=await fetch(src,{method:'GET'}); if(!res.ok) continue; const data=await res.json(); if(typeof data==='object'){ Object.keys(data).forEach(sym=>{ if(!pairs[sym]) pairs[sym]={point:data[sym].point,pip:data[sym].pip,commission:(pairs[sym]&&pairs[sym].commission)||0}; else{ pairs[sym].point=data[sym].point; pairs[sym].pip=data[sym].pip; } }); localStorage.setItem(STORAGE_KEY_PAIRS,JSON.stringify(pairs)); updated=true; break; } }catch(e){} } if(updated){ populatePairs(); alert("Pip/point values updated from online source."); } else{ alert("Could not fetch live values. Using saved values."); } }catch(e){ alert("Fetch failed: "+(e.message||e)); } finally{ document.getElementById('reloadBtn').innerText=orig; } }
+/* ------------------- Fetch latest placeholder ------------------- */
+async function fetchLatest(){ alert("Fetch feature placeholder."); }
 
-/* ------------------ Service Worker ------------------ */
-if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('service-worker.js?v=1.0.2').catch(()=>{}); }catch(e){} }
+/* ------------------- Service worker ------------------- */
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js?v=1.0.3').catch(()=>{}); }
 
-/* ------------------ On Load ------------------ */
-document.addEventListener('DOMContentLoaded', async ()=>{
+/* ------------------- On load ------------------- */
+document.addEventListener('DOMContentLoaded',()=>{
   if(isUnlocked()) hideLock(); else showLock();
-  await loadCloudPairs();
-  populatePairs();
 });
 </script>
-
 </body>
 </html>
