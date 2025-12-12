@@ -3,573 +3,441 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Forex Lot Calculator (Hybrid PWA)</title>
+<title>Forex Lot Calculator — Minimal (cloudPairs)</title>
 
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon.png">
-
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
-<!-- Firebase SDK (needed) -->
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 
 <style>
-:root{--accent:#007bff;--bg:#f4f6fb;--card:#fff;--muted:#666}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);-webkit-font-smoothing:antialiased}
-.wrap{max-width:520px;margin:56px auto 20px;padding:10px}
-.card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(10,10,20,0.06)}
-h1{font-size:20px;margin:0 0 8px;text-align:center}
-label{display:block;margin-top:10px;font-weight:600;color:#222;font-size:14px}
-select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #d6dbe6;font-size:16px;margin-top:6px}
-button{background:var(--accent);color:#fff;border:0;cursor:pointer}
-button.secondary{background:#eee;color:#111}
-#result{margin-top:12px;font-weight:700;text-align:center;color:#111}
-.footer{margin-top:12px;text-align:center;color:var(--muted);font-size:13px}
-.tiny{font-size:13px;color:#666;margin-top:8px}
-
-/* Lock overlay */
-#lockScreen{position:fixed;inset:0;background:#0b1220cc;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999;padding:20px}
-#lockBox{background:#fff;padding:18px;border-radius:12px;min-width:260px;max-width:420px;box-shadow:0 10px 30px rgba(0,0,0,0.4)}
-#lockBox h2{margin:0 0 8px;font-size:18px}
-
-/* Top small buttons */
-.reload-btn,.logout-btn{
-  position:fixed;top:12px;padding:6px 10px;border-radius:8px;border:1px solid #ddd;background:#ffffffee;color:#007bff;font-size:13px;z-index:2000;backdrop-filter: blur(4px);
-}
-.reload-btn{left:12px}
-.logout-btn{right:12px}
-
-/* modal */
-.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1500}
-.modal-content{background:#fff;padding:16px;border-radius:12px;max-width:520px;width:96%}
-.modal-content h3{margin-top:0}
-
-/* lists */
-.pair-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;margin-top:8px;background:#fafafa}
-.pair-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
-.pair-item:last-child{border-bottom:0}
-.small-btn{padding:6px 8px;border-radius:6px;border:0;background:#eee;color:#111;cursor:pointer}
+  body{font-family:system-ui,Arial;margin:18px;background:#f4f6fb;color:#111}
+  .card{max-width:680px;margin:0 auto;background:#fff;padding:16px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.06)}
+  label{display:block;margin-top:10px;font-weight:600}
+  select,input,button{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #d6dbe6}
+  button{background:#007bff;color:#fff;border:0;padding:10px;cursor:pointer}
+  button.secondary{background:#eee;color:#111}
+  .top-row{display:flex;gap:8px;margin-top:12px}
+  .pair-list{max-height:220px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;background:#fafafa}
+  .pair-item{display:flex;justify-content:space-between;align-items:center;padding:6px;border-bottom:1px solid #eee}
+  .pair-item:last-child{border-bottom:0}
+  .small{font-size:13px;color:#666;margin-top:8px}
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)}
+  .modal .panel{background:#fff;padding:14px;border-radius:10px;max-width:640px;width:92%}
+  .row{display:flex;gap:8px}
 </style>
 </head>
 <body>
 
-<!-- top controls -->
-<button id="reloadBtn" class="reload-btn" onclick="fetchLatest()" title="Reload / Fetch latest pip values">Reload</button>
-<button id="logoutBtn" class="logout-btn" onclick="logout()" style="display:none" title="Logout">Logout</button>
+<div class="card">
+  <h2>Forex Lot Calculator (Minimal)</h2>
 
-<!-- Lock overlay -->
-<div id="lockScreen" aria-hidden="false">
-  <div id="lockBox">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-weight:700">Unlock Lot Calculator</div>
-      <div style="font-size:12px;color:#888">One-time per device</div>
-    </div>
-    <h2>Enter password</h2>
-    <input id="passwordInput" type="password" placeholder="Password" autocomplete="off" />
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button onclick="unlockApp()">Unlock</button>
-      <button class="secondary" onclick="showInfo()">Info</button>
-    </div>
-    <div id="lockMsg" class="tiny" style="color:#b00020;margin-top:8px"></div>
-    <div class="tiny" style="margin-top:8px;color:#333">If you forget password you can reset app data in browser settings or reinstall the app.</div>
+  <label>Pair</label>
+  <select id="pairSelect"></select>
+
+  <label>Lot type</label>
+  <select id="lotType">
+    <option value="standardPoint">Standard Point</option>
+    <option value="miniPoint">Mini Point</option>
+    <option value="microPoint">Micro Point</option>
+    <option value="standardPip">Standard Pip</option>
+    <option value="miniPip">Mini Pip</option>
+    <option value="microPip">Micro Pip</option>
+  </select>
+
+  <label>Risk ($)</label>
+  <input id="risk" type="number" placeholder="e.g. 30">
+
+  <label>Stop-loss (points/pips)</label>
+  <input id="sl" type="number" placeholder="e.g. 15">
+
+  <div class="top-row">
+    <button onclick="calculate()">Calculate</button>
+    <button class="secondary" onclick="clearCalc()">Clear</button>
+    <button class="secondary" id="openEditBtn" onclick="openEditModal()">Add/Edit/Sync</button>
   </div>
+
+  <div id="result" class="small"></div>
+  <div class="small" style="margin-top:8px">Tip: Unlock once per device. Cloud pairs come from Firestore collection <b>cloudPairs</b>.</div>
 </div>
 
-<div class="wrap">
-  <div class="card">
-    <h1>Forex Lot Calculator</h1>
+<!-- Modal: Add/Edit/Sync -->
+<div id="editModal" class="modal">
+  <div class="panel">
+    <h3>Add / Edit / Sync</h3>
 
-    <label for="pair">Pair</label>
-    <select id="pair"></select>
-
-    <label for="lotType">Lot type / mode</label>
-    <select id="lotType">
-      <option value="standardPoint">Standard Point Value</option>
-      <option value="miniPoint">Mini Point Value</option>
-      <option value="microPoint">Micro Point Value</option>
-      <option value="standardPip">Standard Pip Value</option>
-      <option value="miniPip">Mini Pip Value</option>
-      <option value="microPip">Micro Pip Value</option>
-    </select>
-
-    <label for="risk">Risk ($)</label>
-    <input id="risk" type="number" placeholder="e.g. 30">
-
-    <label for="sl">Stop-loss (points or pips as selected)</label>
-    <input id="sl" type="number" placeholder="e.g. 15">
-
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button onclick="calculateLot()" style="flex:1">Calculate Lot Size</button>
-      <button class="secondary" onclick="quickClear()" style="flex:0 0 86px">Clear</button>
-    </div>
-
-    <div id="result" aria-live="polite"></div>
-
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="secondary" onclick="openEdit()">Add / Edit Pair</button>
-    </div>
-
-    <div class="footer">Tip: Password asked only first time on each device. Use Logout to re-lock. Reload fetches live pip values if available.</div>
-  </div>
-</div>
-
-<!-- Edit / Sync Modal -->
-<div id="editModal" class="modal" aria-hidden="true">
-  <div class="modal-content">
-    <h3>Add / Edit / Sync (Password Required)</h3>
-
-    <!-- Step 1: app password -->
-    <div id="modalStep1">
-      <input id="modalPassword" type="password" placeholder="Enter app password (6565)" />
+    <!-- Step: require app password -->
+    <div id="stepUnlock">
+      <div class="small">Enter app password (6565) to continue</div>
+      <input id="appPwd" type="password" placeholder="App password">
       <div style="display:flex;gap:8px;margin-top:8px">
-        <button onclick="checkModalPassword()">Unlock</button>
+        <button onclick="unlockModal()">Unlock</button>
         <button class="secondary" onclick="closeEditModal()">Close</button>
       </div>
-      <div id="modalMsg" class="tiny" style="color:#b00020;margin-top:6px"></div>
+      <div id="unlockMsg" class="small" style="color:#b00020"></div>
     </div>
 
-    <!-- Step 2: edit content -->
-    <div id="editContent" style="display:none;margin-top:10px">
-      <label>Pair code (e.g. EURUSD)</label>
-      <input id="newPair" type="text" placeholder="PAIR (uppercase)">
-      <label>Point value (1 standard lot)</label>
-      <input id="pointValue" type="number" placeholder="Value per point for 1 standard lot">
-      <label>Pip value (1 standard lot)</label>
-      <input id="pipValue" type="number" placeholder="Value per pip for 1 standard lot">
+    <!-- Main edit area (visible after app unlock) -->
+    <div id="editArea" style="display:none">
+      <label>Pair code</label>
+      <input id="editPairName" placeholder="EURUSD">
+
+      <label>Point (1 lot)</label>
+      <input id="editPoint" type="number" placeholder="point value">
+
+      <label>Pip (1 lot)</label>
+      <input id="editPip" type="number" placeholder="pip value">
+
       <label>Commission ($ per 1 lot)</label>
-      <input id="commissionValue" type="number" placeholder="Commission per 1 lot">
+      <input id="editCommission" type="number" placeholder="commission">
 
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button onclick="savePair()">Save Pair</button>
-        <button class="secondary" onclick="closeEditModal()">Close</button>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button onclick="saveLocalPair()">Save Local Pair</button>
+        <button class="secondary" onclick="openSyncPanel()">Sync to Cloud</button>
+        <button class="secondary" onclick="openDeleteEditPanel()">Delete / Edit List</button>
       </div>
 
-      <div style="margin-top:12px;border-top:1px solid #eee;padding-top:12px">
-        <div style="display:flex;gap:8px">
-          <button id="openSyncBtn" class="secondary" onclick="openSyncArea()">Sync Cloud</button>
-          <button id="openDEBtn" class="secondary" onclick="openDeleteEditArea()">Delete / Edit</button>
+      <!-- Sync Panel -->
+      <div id="syncPanel" style="display:none;margin-top:12px">
+        <div class="small">Enter cloud password to unlock sync (123456)</div>
+        <input id="cloudPwd" type="password" placeholder="Cloud password">
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button onclick="unlockCloud()">Unlock Cloud</button>
+          <button class="secondary" onclick="closeSyncPanel()">Cancel</button>
         </div>
 
-        <!-- Sync area -->
-        <div id="syncArea" style="display:none;margin-top:12px">
-          <div style="font-weight:700">Cloud unlock</div>
-          <input id="cloudPwd" type="password" placeholder="Cloud password (123456)">
+        <div id="syncListWrap" style="display:none;margin-top:10px">
+          <div class="small">Select local pairs to push to cloud</div>
+          <div id="syncList" class="pair-list"></div>
           <div style="display:flex;gap:8px;margin-top:8px">
-            <button onclick="unlockCloudForSync()">Unlock</button>
-            <button class="secondary" onclick="closeSyncArea()">Cancel</button>
-          </div>
-
-          <div id="syncListContainer" style="display:none;margin-top:8px">
-            <div style="font-weight:700">Select local pairs to sync</div>
-            <div id="syncList" class="pair-list"></div>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <button onclick="syncSelectedToCloud()">Sync Selected</button>
-              <button class="secondary" onclick="closeSyncArea()">Done</button>
-            </div>
+            <button onclick="pushSelectedToCloud()">Push Selected</button>
+            <button class="secondary" onclick="closeSyncPanel()">Done</button>
           </div>
         </div>
+      </div>
 
-        <!-- Delete/Edit area -->
-        <div id="deleteEditArea" style="display:none;margin-top:12px">
-          <div style="font-weight:700">Pairs (C = cloud, L = local)</div>
-          <div id="deleteEditList" class="pair-list"></div>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="secondary" onclick="closeDeleteEditArea()">Close</button>
-          </div>
+      <!-- Delete/Edit List panel -->
+      <div id="dePanel" style="display:none;margin-top:12px">
+        <div class="small">Pairs — C = cloud, L = local</div>
+        <div id="deList" class="pair-list"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="secondary" onclick="closeDeleteEditPanel()">Close</button>
         </div>
-
       </div>
     </div>
+
   </div>
 </div>
 
 <script>
-/* ======================
-   App config & Firebase
-   ====================== */
-const INITIAL_PASSWORD = "6565";
+/* ============ CONFIG ============ */
+const APP_PASSWORD = "6565";
 const CLOUD_PASSWORD = "123456";
-const STORAGE_KEY_PAIRS = "lotcalc_pairs_v_final";
-const STORAGE_KEY_PASSWORD = "lotcalc_app_pass_v_final";
-const STORAGE_KEY_UNLOCKED = "lotcalc_unlocked_v_final";
+const STORAGE_KEY = "minimal_pairs_v1";
+const FIRE_COLLECTION = "cloudPairs"; // as you asked
 
-/* Paste your Firebase config here (you said you already did) */
+/* ===== Firebase config - replace with your config if needed ===== */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
+  authDomain: "lotcalci.firebaseapp.com",
+  projectId: "lotcalci",
+  storageBucket: "lotcalci.firebasestorage.app",
+  messagingSenderId: "662389905318",
+  appId: "1:662389905318:web:3b9963ab853374ee606167"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-/* ------------------------
-   Pairs data model
-   ------------------------ */
-/* default preloaded pairs (local by default) */
-const defaultPairs = {
-  "EURUSD": { point:1.0, pip:10.0, commission:4, type:"local" },
-  "GBPUSD": { point:1.0, pip:10.0, commission:4, type:"local" },
-  "AUDUSD": { point:1.0, pip:10.0, commission:4, type:"local" },
-  "NZDUSD": { point:1.0, pip:10.0, commission:4, type:"local" },
-  "USDJPY": { point:0.69, pip:6.9, commission:4, type:"local" },
-  "USDCAD": { point:1.0, pip:10.0, commission:4, type:"local" },
-  "USDCHF": { point:0.91, pip:9.1, commission:4, type:"local" },
-  "EURJPY": { point:0.76, pip:7.6, commission:4, type:"local" },
-  "AUDJPY": { point:0.63, pip:6.3, commission:4, type:"local" },
-  "XAUUSD": { point:1.0, pip:10.0, commission:0, type:"local" }
+/* ===== Preloaded defaults ===== */
+const defaults = {
+  "EURUSD": {point:1.0, pip:10.0, commission:4, type:"local"},
+  "GBPUSD": {point:1.0, pip:10.0, commission:4, type:"local"},
+  "AUDUSD": {point:1.0, pip:10.0, commission:4, type:"local"},
+  "NZDUSD": {point:1.0, pip:10.0, commission:4, type:"local"},
+  "USDJPY": {point:0.69, pip:6.9, commission:4, type:"local"},
+  "USDCAD": {point:1.0, pip:10.0, commission:4, type:"local"},
+  "USDCHF": {point:0.91, pip:9.1, commission:4, type:"local"},
+  "EURJPY": {point:0.76, pip:7.6, commission:4, type:"local"},
+  "AUDJPY": {point:0.63, pip:6.3, commission:4, type:"local"},
+  "XAUUSD": {point:1.0, pip:10.0, commission:0, type:"local"}
 };
 
-let pairs = {}; // map name -> {point, pip, commission, type}
+/* ===== state: pairs map name -> {point,pip,commission,type} ===== */
+let pairs = {};
 
-/* Load from localStorage and merge with defaults */
-function loadLocalPairs(){
+/* Load local pairs merged with defaults */
+function loadLocal(){
   try{
-    const raw = localStorage.getItem(STORAGE_KEY_PAIRS);
+    const raw = localStorage.getItem(STORAGE_KEY);
     const saved = raw ? JSON.parse(raw) : {};
-    // start with defaults, then overlay saved
-    pairs = JSON.parse(JSON.stringify(defaultPairs));
+    pairs = JSON.parse(JSON.stringify(defaults));
     Object.keys(saved).forEach(k=>{
+      // accept saved pair structure
       pairs[k] = saved[k];
     });
   }catch(e){
-    pairs = JSON.parse(JSON.stringify(defaultPairs));
+    pairs = JSON.parse(JSON.stringify(defaults));
   }
 }
-loadLocalPairs();
+loadLocal();
 
-/* Ensure password stored */
-if(!localStorage.getItem(STORAGE_KEY_PASSWORD)) localStorage.setItem(STORAGE_KEY_PASSWORD, INITIAL_PASSWORD);
-
-/* ------------------------
-   Utility: save local pairs
-   ------------------------ */
-function saveLocalPairs(){
+/* Save local pairs */
+function saveLocal(){
   try{
-    // Only save pairs that are local or cloud flags included so we persist types
-    localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(pairs));
   }catch(e){
-    console.warn("Failed saving pairs:", e);
+    console.warn("saveLocal error", e);
   }
 }
 
-/* ------------------------
-   Populate dropdown
-   ------------------------ */
-function populatePairs(){
-  const sel = document.getElementById('pair');
+/* Populate main dropdown */
+function populateDropdown(){
+  const sel = document.getElementById('pairSelect');
   sel.innerHTML = '';
   Object.keys(pairs).sort().forEach(k=>{
     const opt = document.createElement('option');
     opt.value = k;
-    // show small marker for cloud in dropdown
     opt.text = pairs[k].type === 'cloud' ? `${k} (cloud)` : k;
     sel.appendChild(opt);
   });
 }
-populatePairs();
+populateDropdown();
 
-/* ------------------------
-   Load cloud pairs from Firestore (merge)
-   ------------------------ */
-async function loadCloudPairs(){
+/* Load cloud pairs and merge */
+async function mergeCloud(){
   try{
-    const snapshot = await db.collection('sharedPairs').get();
-    snapshot.forEach(doc=>{
+    const snap = await db.collection(FIRE_COLLECTION).get();
+    snap.forEach(doc=>{
       const name = doc.id;
       const data = doc.data();
-      // mark as cloud; merge so that cloud values override point/pip, but if local commission exists keep it
       pairs[name] = {
         point: data.point,
         pip: data.pip,
-        commission: (pairs[name] && pairs[name].commission !== undefined) ? pairs[name].commission : (data.commission ?? 0),
+        commission: (pairs[name] && pairs[name].commission !== undefined) ? pairs[name].commission : (data.commission || 0),
         type: "cloud"
       };
     });
-    saveLocalPairs(); // cache merged state locally so offline users get cloud pairs as read-only
-    populatePairs();
+    saveLocal(); populateDropdown();
   }catch(e){
-    console.warn("Cloud load failed:", e);
+    console.warn("mergeCloud failed", e);
   }
 }
 
-/* ------------------------
-   Calculator
-   ------------------------ */
-function calculateLot(){
-  const pairName = document.getElementById('pair').value;
+/* Run cloud merge on load (non-blocking) */
+mergeCloud();
+
+/* =========== Calculator =========== */
+function calculate(){
+  const pairName = document.getElementById('pairSelect').value;
   const lotType = document.getElementById('lotType').value;
   const risk = parseFloat(document.getElementById('risk').value);
   const sl = parseFloat(document.getElementById('sl').value);
-  if(!pairName || isNaN(risk) || isNaN(sl) || risk <= 0 || sl <= 0){
-    document.getElementById('result').innerText = "Enter valid Risk and Stop-loss.";
+  if(!pairName || isNaN(risk) || isNaN(sl) || risk<=0 || sl<=0){
+    document.getElementById('result').innerText = "Enter valid Risk and SL.";
     return;
   }
-  const pair = pairs[pairName];
-  if(!pair){
-    document.getElementById('result').innerText = "Pair not found.";
-    return;
-  }
-  if(pair.commission === undefined || pair.commission === null) pair.commission = 0;
-  let valuePerLot=0;
+  const p = pairs[pairName];
+  if(!p){ document.getElementById('result').innerText = "Pair missing"; return; }
+  let v=0;
   switch(lotType){
-    case "standardPoint": valuePerLot = pair.point; break;
-    case "miniPoint": valuePerLot = pair.point/10; break;
-    case "microPoint": valuePerLot = pair.point/100; break;
-    case "standardPip": valuePerLot = pair.pip; break;
-    case "miniPip": valuePerLot = pair.pip/10; break;
-    case "microPip": valuePerLot = pair.pip/100; break;
+    case "standardPoint": v = p.point; break;
+    case "miniPoint": v = p.point/10; break;
+    case "microPoint": v = p.point/100; break;
+    case "standardPip": v = p.pip; break;
+    case "miniPip": v = p.pip/10; break;
+    case "microPip": v = p.pip/100; break;
   }
-  const lot = risk / (sl * valuePerLot + pair.commission);
-  document.getElementById('result').innerText = `Lot Size: ${lot.toFixed(2)} lots (Risk: $${risk}, SL: ${sl})`;
+  const lot = risk / (sl * v + (p.commission||0));
+  document.getElementById('result').innerText = `Lot: ${lot.toFixed(2)} lots`;
 }
+function clearCalc(){ document.getElementById('risk').value=''; document.getElementById('sl').value=''; document.getElementById('result').innerText=''; }
 
-/* ------------------------
-   Quick clear
-   ------------------------ */
-function quickClear(){
-  document.getElementById('risk').value=''; document.getElementById('sl').value=''; document.getElementById('result').innerText='';
-}
-
-/* ------------------------
-   Lock / Unlock logic
-   ------------------------ */
-function isUnlocked(){ return localStorage.getItem(STORAGE_KEY_UNLOCKED) === "true"; }
+/* =========== Lock logic =========== */
+function isUnlocked(){ return localStorage.getItem('minimal_unlocked') === '1'; }
 function unlockApp(){
-  const typed = (document.getElementById('passwordInput').value || '').trim();
-  const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || INITIAL_PASSWORD;
-  if(typed === real){
-    localStorage.setItem(STORAGE_KEY_UNLOCKED, "true");
-    hideLock();
+  const v = (document.getElementById('passwordInput').value||'').trim();
+  const real = localStorage.getItem(STORAGE_KEY + "_pwd") || APP_PASSWORD;
+  if(v === real){
+    localStorage.setItem('minimal_unlocked','1');
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('logoutBtn').style.display = 'inline-block';
   } else {
-    document.getElementById('lockMsg').innerText = "Wrong password. Try again.";
+    document.getElementById('lockMsg').innerText = "Wrong password.";
   }
 }
-function hideLock(){ document.getElementById('lockScreen').style.display='none'; document.getElementById('logoutBtn').style.display='inline-block'; }
-function showLock(){ document.getElementById('lockScreen').style.display='flex'; document.getElementById('logoutBtn').style.display='none'; }
-function logout(){ if(confirm("Logout will lock the app on this device. Continue?")){ localStorage.removeItem(STORAGE_KEY_UNLOCKED); showLock(); } }
-function showInfo(){ alert("Password asked only first time on a device. To re-lock use Logout."); }
-
-/* ------------------------
-   Modal open/close & edit/save pair
-   ------------------------ */
-function openEdit(){
-  document.getElementById('editModal').style.display='flex';
-  document.getElementById('modalPassword').value='';
-  document.getElementById('modalMsg').innerText='';
-  document.getElementById('editContent').style.display='none';
-  document.getElementById('syncArea').style.display='none';
-  document.getElementById('deleteEditArea').style.display='none';
-  // ensure edit fields are cleared
-  document.getElementById('newPair').value='';
-  document.getElementById('pointValue').value='';
-  document.getElementById('pipValue').value='';
-  document.getElementById('commissionValue').value='';
+function logout(){
+  localStorage.removeItem('minimal_unlocked');
+  document.getElementById('lockScreen').style.display = 'flex';
+  document.getElementById('logoutBtn').style.display = 'none';
 }
+if(isUnlocked()){ document.getElementById('lockScreen').style.display='none'; document.getElementById('logoutBtn').style.display='inline-block'; }
+
+/* =========== Modal control =========== */
+function openEditModal(){ document.getElementById('editModal').style.display='flex'; document.getElementById('stepUnlock').style.display='block'; document.getElementById('editArea').style.display='none'; document.getElementById('unlockMsg').innerText=''; }
 function closeEditModal(){ document.getElementById('editModal').style.display='none'; }
 
-function checkModalPassword(){
-  const typed = (document.getElementById('modalPassword').value||'').trim();
-  const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || INITIAL_PASSWORD;
-  if(typed === real){
-    document.getElementById('editContent').style.display='block';
-    document.getElementById('modalStep1').style.display='none';
-    // Pre-fill with selected pair data
-    const sel = document.getElementById('pair').value;
+/* Unlock modal with app password */
+function unlockModal(){
+  const v = (document.getElementById('appPwd').value||'').trim();
+  const real = localStorage.getItem(STORAGE_KEY + "_pwd") || APP_PASSWORD;
+  if(v === real){
+    document.getElementById('stepUnlock').style.display='none';
+    document.getElementById('editArea').style.display='block';
+    document.getElementById('editPairName').value = document.getElementById('pairSelect').value || '';
+    const sel = document.getElementById('pairSelect').value;
     if(pairs[sel]){
-      document.getElementById('newPair').value = sel;
-      document.getElementById('pointValue').value = pairs[sel].point;
-      document.getElementById('pipValue').value = pairs[sel].pip;
-      document.getElementById('commissionValue').value = pairs[sel].commission;
+      document.getElementById('editPoint').value = pairs[sel].point;
+      document.getElementById('editPip').value = pairs[sel].pip;
+      document.getElementById('editCommission').value = pairs[sel].commission;
+    } else {
+      document.getElementById('editPoint').value=''; document.getElementById('editPip').value=''; document.getElementById('editCommission').value='';
     }
   } else {
-    document.getElementById('modalMsg').innerText = 'Wrong password!';
+    document.getElementById('unlockMsg').innerText = "Wrong app password.";
   }
 }
 
-function savePair(){
-  const name = (document.getElementById('newPair').value||'').toUpperCase().trim();
-  const point = parseFloat(document.getElementById('pointValue').value);
-  const pip = parseFloat(document.getElementById('pipValue').value);
-  const commission = parseFloat(document.getElementById('commissionValue').value);
+/* =========== Save local pair =========== */
+function saveLocalPair(){
+  const name = (document.getElementById('editPairName').value||'').toUpperCase().trim();
+  const point = parseFloat(document.getElementById('editPoint').value);
+  const pip = parseFloat(document.getElementById('editPip').value);
+  const commission = parseFloat(document.getElementById('editCommission').value);
   if(!name || isNaN(point) || isNaN(pip) || isNaN(commission)){
-    alert("Enter valid pair, point, pip and commission.");
+    alert("Enter valid name/point/pip/commission.");
     return;
   }
-  // Save as local pair by default
-  pairs[name] = { point, pip, commission, type: (pairs[name] && pairs[name].type === 'cloud') ? 'cloud' : 'local' };
-  saveLocalPairs();
-  populatePairs();
-  alert(name + " saved.");
-  closeEditModal();
+  // if existed and was cloud, keep type cloud unless user overwrites by syncing
+  const prev = pairs[name];
+  const type = (prev && prev.type==='cloud') ? 'cloud' : 'local';
+  pairs[name] = { point, pip, commission, type };
+  saveLocal();
+  populateDropdown();
+  alert(name + " saved locally.");
 }
 
-/* ------------------------
-   Sync Cloud area (checkbox selection)
-   ------------------------ */
-let cloudUnlockedForSync = false;
-function openSyncArea(){
+/* =========== Sync to cloud (panel) =========== */
+let cloudUnlocked = false;
+function openSyncPanel(){
+  cloudUnlocked = false;
   document.getElementById('syncArea').style.display='block';
+  document.getElementById('cloudPwd').value='';
   document.getElementById('syncList').innerHTML='';
-  document.getElementById('syncListContainer').style.display='none';
-  cloudUnlockedForSync = false;
-  document.getElementById('cloudPwd').value = '';
+  document.getElementById('syncListWrap').style.display='none';
 }
-
-function closeSyncArea(){
+function closeSyncPanel(){
   document.getElementById('syncArea').style.display='none';
   document.getElementById('syncList').innerHTML='';
-  document.getElementById('syncListContainer').style.display='none';
-  cloudUnlockedForSync = false;
+  document.getElementById('syncListWrap').style.display='none';
+  cloudUnlocked = false;
 }
-
-function unlockCloudForSync(){
-  const pw = (document.getElementById('cloudPwd').value||'').trim();
-  if(pw !== CLOUD_PASSWORD){ alert("Wrong cloud password."); return; }
-  cloudUnlockedForSync = true;
-  // populate local pairs checkboxes (exclude cloud ones)
-  const list = document.getElementById('syncList');
-  list.innerHTML = '';
+function unlockCloud(){
+  const v = (document.getElementById('cloudPwd').value||'').trim();
+  if(v !== CLOUD_PASSWORD){ alert("Wrong cloud password"); return; }
+  cloudUnlocked = true;
+  // list local pairs
+  const wrap = document.getElementById('syncList');
+  wrap.innerHTML = '';
   Object.keys(pairs).sort().forEach(k=>{
     if(pairs[k].type === 'local'){
-      const item = document.createElement('div');
-      item.className = 'pair-item';
+      const row = document.createElement('div');
+      row.className = 'pair-item';
       const left = document.createElement('div'); left.innerText = k;
-      const cb = document.createElement('input'); cb.type='checkbox'; cb.value=k;
-      item.prepend(cb);
-      item.appendChild(left);
-      list.appendChild(item);
+      const cb = document.createElement('input'); cb.type='checkbox'; cb.value = k;
+      row.prepend(cb);
+      row.appendChild(left);
+      wrap.appendChild(row);
     }
   });
-  document.getElementById('syncListContainer').style.display = 'block';
+  document.getElementById('syncListWrap').style.display = 'block';
 }
 
-async function syncSelectedToCloud(){
-  if(!cloudUnlockedForSync){ alert("Unlock cloud first."); return; }
-  const selected = Array.from(document.querySelectorAll('#syncList input[type=checkbox]:checked')).map(i=>i.value);
-  if(selected.length === 0){ alert("Select at least one pair."); return; }
+async function pushSelectedToCloud(){
+  if(!cloudUnlocked){ alert("Unlock cloud first"); return; }
+  const checks = Array.from(document.querySelectorAll('#syncList input[type=checkbox]:checked')).map(i=>i.value);
+  if(checks.length === 0){ alert("Select pairs"); return; }
   try{
-    for(const name of selected){
+    for(const name of checks){
       const p = pairs[name];
-      await db.collection('sharedPairs').doc(name).set({ point: p.point, pip: p.pip, commission: p.commission });
-      // mark as cloud locally
+      await db.collection(FIRE_COLLECTION).doc(name).set({ point: p.point, pip: p.pip, commission: p.commission });
       pairs[name].type = 'cloud';
     }
-    saveLocalPairs();
-    populatePairs();
-    alert("Synced to cloud: " + selected.join(", "));
-    closeSyncArea();
+    saveLocal(); populateDropdown();
+    alert("Synced: " + checks.join(", "));
+    closeSyncPanel();
   }catch(e){
     alert("Sync failed: " + e);
   }
 }
 
-/* ------------------------
-   Delete / Edit area (list with C/L)
-   ------------------------ */
-function openDeleteEditArea(){
-  const list = document.getElementById('deleteEditList');
-  list.innerHTML = '';
+/* =========== Delete/Edit panel =========== */
+function openDeleteEditPanel(){
+  const wrap = document.getElementById('deList');
+  wrap.innerHTML = '';
   Object.keys(pairs).sort().forEach(k=>{
     const p = pairs[k];
     const item = document.createElement('div'); item.className='pair-item';
-    const left = document.createElement('div'); left.innerText = k + ' (' + (p.type === 'cloud' ? 'C' : 'L') + ')';
+    const left = document.createElement('div'); left.innerText = k + ' (' + (p.type==='cloud' ? 'C':'L') + ')';
     const right = document.createElement('div');
     right.style.display='flex'; right.style.gap='6px';
-    const editBtn = document.createElement('button'); editBtn.className='small-btn'; editBtn.innerText='Edit';
-    editBtn.onclick = ()=>triggerEditPair(k);
-    const delBtn = document.createElement('button'); delBtn.className='small-btn'; delBtn.innerText='Delete';
-    delBtn.onclick = ()=>triggerDeletePair(k);
+    const editBtn = document.createElement('button'); editBtn.className='small'; editBtn.innerText='Edit';
+    const delBtn = document.createElement('button'); delBtn.className='small'; delBtn.innerText='Delete';
+    editBtn.onclick = ()=>editFromList(k);
+    delBtn.onclick = ()=>deleteFromList(k);
     right.appendChild(editBtn); right.appendChild(delBtn);
     item.appendChild(left); item.appendChild(right);
-    list.appendChild(item);
+    wrap.appendChild(item);
   });
-  document.getElementById('deleteEditList').style.display='block';
+  document.getElementById('dePanel').style.display='block';
   document.getElementById('deleteEditArea').style.display='block';
 }
-
-function closeDeleteEditArea(){
+function closeDeleteEditPanel(){
+  document.getElementById('dePanel').style.display='none';
   document.getElementById('deleteEditArea').style.display='none';
-  document.getElementById('deleteEditList').style.display='none';
 }
 
-/* trigger edit logic */
-async function triggerEditPair(name){
+function editFromList(name){
   const p = pairs[name];
   if(!p) return;
   if(p.type === 'cloud'){
-    // require cloud password
     const pw = prompt("Enter cloud password to edit this cloud pair:");
-    if(pw !== CLOUD_PASSWORD){ alert("Wrong cloud password."); return; }
-    // allow edit: populate fields and mark that saving should update cloud if user chooses to sync
-    document.getElementById('newPair').value = name;
-    document.getElementById('pointValue').value = p.point;
-    document.getElementById('pipValue').value = p.pip;
-    document.getElementById('commissionValue').value = p.commission;
-    alert("Edit the fields and click Save Pair. To push changes to cloud, click 'Sync Cloud' after saving.");
+    if(pw !== CLOUD_PASSWORD){ alert("Wrong cloud password"); return; }
+    // allow editing: populate edit fields
+    document.getElementById('editPairName').value = name;
+    document.getElementById('editPoint').value = p.point;
+    document.getElementById('editPip').value = p.pip;
+    document.getElementById('editCommission').value = p.commission;
+    alert("Edit values and click Save Pair. To push changes to cloud, open Sync Cloud after saving.");
   } else {
-    // local pair edit: no password
-    document.getElementById('newPair').value = name;
-    document.getElementById('pointValue').value = p.point;
-    document.getElementById('pipValue').value = p.pip;
-    document.getElementById('commissionValue').value = p.commission;
-    alert("Edit the fields and click Save Pair.");
+    // local pair: no pw
+    document.getElementById('editPairName').value = name;
+    document.getElementById('editPoint').value = p.point;
+    document.getElementById('editPip').value = p.pip;
+    document.getElementById('editCommission').value = p.commission;
+    alert("Edit values and click Save Pair.");
   }
 }
 
-/* trigger delete logic */
-async function triggerDeletePair(name){
+async function deleteFromList(name){
   const p = pairs[name];
   if(!p) return;
   if(p.type === 'cloud'){
     const pw = prompt("Enter cloud password to delete this cloud pair:");
-    if(pw !== CLOUD_PASSWORD){ alert("Wrong cloud password."); return; }
-    // delete from firestore
-    try{
-      await db.collection('sharedPairs').doc(name).delete();
-    }catch(e){
-      console.warn("Cloud delete might have failed:", e);
-    }
+    if(pw !== CLOUD_PASSWORD){ alert("Wrong cloud password"); return; }
+    // delete in firestore
+    try{ await db.collection(FIRE_COLLECTION).doc(name).delete(); }catch(e){ console.warn("cloud delete error", e); }
   }
-  // always remove locally
+  // delete locally
   delete pairs[name];
-  saveLocalPairs();
-  populatePairs();
-  openDeleteEditArea(); // refresh list
+  saveLocal();
+  populateDropdown();
+  openDeleteEditPanel(); // refresh list
 }
 
-/* ------------------------
-   Load cloud pairs on startup
------------------------- */
-document.addEventListener('DOMContentLoaded', async ()=>{
-  // merge default/local first already done
-  // then fetch cloud pairs and merge (cloud overrides point/pip)
-  try{
-    await loadCloudPairs();
-  }catch(e){}
-  populatePairs();
-  if(isUnlocked()) hideLock(); else showLock();
+/* =========== On startup UI state =========== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(isUnlocked()){ document.getElementById('lockScreen').style.display='none'; document.getElementById('logoutBtn').style.display='inline-block'; }
+  else { document.getElementById('lockScreen').style.display='flex'; document.getElementById('logoutBtn').style.display='none'; }
 });
-
-/* ------------------------
-   Fetch latest placeholder (you can replace source)
------------------------- */
-async function fetchLatest(){
-  alert("Fetch latest pip values is a placeholder. Add your API source.");
-}
-
-/* ------------------------
-   Service worker (PWA)
------------------------- */
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('service-worker.js?v=1.0.5').catch(()=>{});
-}
 </script>
 </body>
 </html>
