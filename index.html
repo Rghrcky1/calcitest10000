@@ -12,6 +12,10 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 
+<!-- Firebase SDK (needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+
 <style>
 :root{--accent:#007bff;--bg:#f4f6fb;--card:#fff;--muted:#666}
 *{box-sizing:border-box}
@@ -41,16 +45,14 @@ button.secondary{background:#eee;color:#111}
 
 /* modal */
 .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);justify-content:center;align-items:center;z-index:1500}
-.modal-content{background:#fff;padding:16px;border-radius:12px;max-width:420px;width:92%}
+.modal-content{background:#fff;padding:16px;border-radius:12px;max-width:520px;width:96%}
 .modal-content h3{margin-top:0}
 
-/* Bulk delete/edit list */
-.delete-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;margin-top:8px;background:#fafafa}
-.delete-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
-.delete-item:last-child{border-bottom:0}
-
-/* small improvements for tiny screens */
-@media (min-width:600px){ .wrap{margin-top:80px} h1{font-size:22px} }
+/* lists */
+.pair-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;margin-top:8px;background:#fafafa}
+.pair-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
+.pair-item:last-child{border-bottom:0}
+.small-btn{padding:6px 8px;border-radius:6px;border:0;background:#eee;color:#111;cursor:pointer}
 </style>
 </head>
 <body>
@@ -59,7 +61,7 @@ button.secondary{background:#eee;color:#111}
 <button id="reloadBtn" class="reload-btn" onclick="fetchLatest()" title="Reload / Fetch latest pip values">Reload</button>
 <button id="logoutBtn" class="logout-btn" onclick="logout()" style="display:none" title="Logout">Logout</button>
 
-<!-- initial lock overlay -->
+<!-- Lock overlay -->
 <div id="lockScreen" aria-hidden="false">
   <div id="lockBox">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -115,14 +117,14 @@ button.secondary{background:#eee;color:#111}
   </div>
 </div>
 
-<!-- modal for add/edit pair (password required) -->
+<!-- Edit / Sync Modal -->
 <div id="editModal" class="modal" aria-hidden="true">
   <div class="modal-content">
-    <h3>Add / Edit Pair (Password Required)</h3>
+    <h3>Add / Edit / Sync (Password Required)</h3>
 
-    <!-- Step 1: password unlock for modal -->
+    <!-- Step 1: app password -->
     <div id="modalStep1">
-      <input type="password" id="modalPassword" placeholder="Enter password" />
+      <input id="modalPassword" type="password" placeholder="Enter app password (6565)" />
       <div style="display:flex;gap:8px;margin-top:8px">
         <button onclick="checkModalPassword()">Unlock</button>
         <button class="secondary" onclick="closeEditModal()">Close</button>
@@ -132,31 +134,51 @@ button.secondary{background:#eee;color:#111}
 
     <!-- Step 2: edit content -->
     <div id="editContent" style="display:none;margin-top:10px">
-      <label>Pair code (e.g. EURJPY)</label>
-      <input id="newPair" type="text" placeholder="Pair name (uppercase)">
+      <label>Pair code (e.g. EURUSD)</label>
+      <input id="newPair" type="text" placeholder="PAIR (uppercase)">
       <label>Point value (1 standard lot)</label>
       <input id="pointValue" type="number" placeholder="Value per point for 1 standard lot">
       <label>Pip value (1 standard lot)</label>
       <input id="pipValue" type="number" placeholder="Value per pip for 1 standard lot">
       <label>Commission ($ per 1 lot)</label>
       <input id="commissionValue" type="number" placeholder="Commission per 1 lot">
+
       <div style="display:flex;gap:8px;margin-top:10px">
-        <button onclick="addOrEditPair()">Save Pair</button>
+        <button onclick="savePair()">Save Pair</button>
         <button class="secondary" onclick="closeEditModal()">Close</button>
       </div>
 
-      <div style="margin-top:14px;border-top:1px solid #eee;padding-top:12px">
-        <div style="display:flex;gap:8px;">
-          <button onclick="openDeleteEditView()" class="secondary" style="flex:1;background:#fff;color:#111;border:1px solid #d6dbe6">Delete / Edit Pairs</button>
-          <button onclick="syncCloudPairs()" class="secondary" style="flex:1">Sync Cloud</button>
+      <div style="margin-top:12px;border-top:1px solid #eee;padding-top:12px">
+        <div style="display:flex;gap:8px">
+          <button id="openSyncBtn" class="secondary" onclick="openSyncArea()">Sync Cloud</button>
+          <button id="openDEBtn" class="secondary" onclick="openDeleteEditArea()">Delete / Edit</button>
         </div>
 
-        <!-- Delete/Edit View -->
-        <div id="deleteEditView" style="display:none;margin-top:12px">
-          <div style="font-weight:700;margin-bottom:8px">Pairs (C=Cloud / L=Local)</div>
-          <div class="delete-list" id="deleteEditList"></div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button onclick="closeDeleteEditView()" style="flex:1">Back</button>
+        <!-- Sync area -->
+        <div id="syncArea" style="display:none;margin-top:12px">
+          <div style="font-weight:700">Cloud unlock</div>
+          <input id="cloudPwd" type="password" placeholder="Cloud password (123456)">
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button onclick="unlockCloudForSync()">Unlock</button>
+            <button class="secondary" onclick="closeSyncArea()">Cancel</button>
+          </div>
+
+          <div id="syncListContainer" style="display:none;margin-top:8px">
+            <div style="font-weight:700">Select local pairs to sync</div>
+            <div id="syncList" class="pair-list"></div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button onclick="syncSelectedToCloud()">Sync Selected</button>
+              <button class="secondary" onclick="closeSyncArea()">Done</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delete/Edit area -->
+        <div id="deleteEditArea" style="display:none;margin-top:12px">
+          <div style="font-weight:700">Pairs (C = cloud, L = local)</div>
+          <div id="deleteEditList" class="pair-list"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="secondary" onclick="closeDeleteEditArea()">Close</button>
           </div>
         </div>
 
@@ -165,21 +187,17 @@ button.secondary{background:#eee;color:#111}
   </div>
 </div>
 
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
-
 <script>
-/* ============================
-   CONFIG - easy to edit area
-   ============================ */
+/* ======================
+   App config & Firebase
+   ====================== */
 const INITIAL_PASSWORD = "6565";
-const CLOUD_ADMIN_PASSWORD = "123456"; // cloud sync / edit / delete password
-const STORAGE_KEY_PAIRS = "lotcalc_pairs_v2";
-const STORAGE_KEY_PASSWORD = "lotcalc_app_pass_v2";
-const STORAGE_KEY_UNLOCKED = "lotcalc_unlocked_v2";
+const CLOUD_PASSWORD = "123456";
+const STORAGE_KEY_PAIRS = "lotcalc_pairs_v_final";
+const STORAGE_KEY_PASSWORD = "lotcalc_app_pass_v_final";
+const STORAGE_KEY_UNLOCKED = "lotcalc_unlocked_v_final";
 
-/* ===== FIREBASE CONFIG (Replace with your real config) ===== */
+/* Paste your Firebase config here (you said you already did) */
 const firebaseConfig = {
   apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
   authDomain: "lotcalci.firebaseapp.com",
@@ -188,300 +206,369 @@ const firebaseConfig = {
   messagingSenderId: "662389905318",
   appId: "1:662389905318:web:3b9963ab853374ee606167"
 };
-
-// Initialize Firebase
-const app = firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-/* Preloaded pairs */
-let defaultPairs = {
-  "EURUSD": { point:1.0, pip:10.0, commission:4 },
-  "GBPUSD": { point:1.0, pip:10.0, commission:4 },
-  "AUDUSD": { point:1.0, pip:10.0, commission:4 },
-  "NZDUSD": { point:1.0, pip:10.0, commission:4 },
-  "USDJPY": { point:0.69, pip:6.9, commission:4 },
-  "USDCAD": { point:1.0, pip:10.0, commission:4 },
-  "USDCHF": { point:0.91, pip:9.1, commission:4 },
-  "EURJPY": { point:0.76, pip:7.6, commission:4 },
-  "AUDJPY": { point:0.63, pip:6.3, commission:4 },
-  "XAUUSD": { point:1.0, pip:10.0, commission:0 }
+/* ------------------------
+   Pairs data model
+   ------------------------ */
+/* default preloaded pairs (local by default) */
+const defaultPairs = {
+  "EURUSD": { point:1.0, pip:10.0, commission:4, type:"local" },
+  "GBPUSD": { point:1.0, pip:10.0, commission:4, type:"local" },
+  "AUDUSD": { point:1.0, pip:10.0, commission:4, type:"local" },
+  "NZDUSD": { point:1.0, pip:10.0, commission:4, type:"local" },
+  "USDJPY": { point:0.69, pip:6.9, commission:4, type:"local" },
+  "USDCAD": { point:1.0, pip:10.0, commission:4, type:"local" },
+  "USDCHF": { point:0.91, pip:9.1, commission:4, type:"local" },
+  "EURJPY": { point:0.76, pip:7.6, commission:4, type:"local" },
+  "AUDJPY": { point:0.63, pip:6.3, commission:4, type:"local" },
+  "XAUUSD": { point:1.0, pip:10.0, commission:0, type:"local" }
 };
 
-/* Load pairs from localStorage or fall back to defaultPairs */
-let pairs;
-try {
-  const saved = localStorage.getItem(STORAGE_KEY_PAIRS);
-  pairs = saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(defaultPairs));
-} catch (e) {
-  pairs = JSON.parse(JSON.stringify(defaultPairs));
+let pairs = {}; // map name -> {point, pip, commission, type}
+
+/* Load from localStorage and merge with defaults */
+function loadLocalPairs(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY_PAIRS);
+    const saved = raw ? JSON.parse(raw) : {};
+    // start with defaults, then overlay saved
+    pairs = JSON.parse(JSON.stringify(defaultPairs));
+    Object.keys(saved).forEach(k=>{
+      pairs[k] = saved[k];
+    });
+  }catch(e){
+    pairs = JSON.parse(JSON.stringify(defaultPairs));
+  }
+}
+loadLocalPairs();
+
+/* Ensure password stored */
+if(!localStorage.getItem(STORAGE_KEY_PASSWORD)) localStorage.setItem(STORAGE_KEY_PASSWORD, INITIAL_PASSWORD);
+
+/* ------------------------
+   Utility: save local pairs
+   ------------------------ */
+function saveLocalPairs(){
+  try{
+    // Only save pairs that are local or cloud flags included so we persist types
+    localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs));
+  }catch(e){
+    console.warn("Failed saving pairs:", e);
+  }
 }
 
-/* Ensure password exists in storage */
-if (!localStorage.getItem(STORAGE_KEY_PASSWORD)) {
-  localStorage.setItem(STORAGE_KEY_PASSWORD, INITIAL_PASSWORD);
-}
-
-/* ---------------------------
+/* ------------------------
    Populate dropdown
-   --------------------------- */
+   ------------------------ */
 function populatePairs(){
   const sel = document.getElementById('pair');
   sel.innerHTML = '';
-  const preferred = ["EURUSD","GBPUSD","AUDUSD","NZDUSD","EURJPY","AUDJPY","USDJPY","USDCAD","USDCHF","XAUUSD"];
-  preferred.forEach(k=>{
-    if (pairs[k]) {
-      const o = document.createElement('option');
-      o.value = k; o.text = k; sel.appendChild(o);
-    }
-  });
   Object.keys(pairs).sort().forEach(k=>{
-    if (!preferred.includes(k)) {
-      const o = document.createElement('option');
-      o.value = k; o.text = k; sel.appendChild(o);
-    }
+    const opt = document.createElement('option');
+    opt.value = k;
+    // show small marker for cloud in dropdown
+    opt.text = pairs[k].type === 'cloud' ? `${k} (cloud)` : k;
+    sel.appendChild(opt);
   });
 }
 populatePairs();
 
-/* ---------------------------
-   Calculation logic
-   --------------------------- */
+/* ------------------------
+   Load cloud pairs from Firestore (merge)
+   ------------------------ */
+async function loadCloudPairs(){
+  try{
+    const snapshot = await db.collection('sharedPairs').get();
+    snapshot.forEach(doc=>{
+      const name = doc.id;
+      const data = doc.data();
+      // mark as cloud; merge so that cloud values override point/pip, but if local commission exists keep it
+      pairs[name] = {
+        point: data.point,
+        pip: data.pip,
+        commission: (pairs[name] && pairs[name].commission !== undefined) ? pairs[name].commission : (data.commission ?? 0),
+        type: "cloud"
+      };
+    });
+    saveLocalPairs(); // cache merged state locally so offline users get cloud pairs as read-only
+    populatePairs();
+  }catch(e){
+    console.warn("Cloud load failed:", e);
+  }
+}
+
+/* ------------------------
+   Calculator
+   ------------------------ */
 function calculateLot(){
   const pairName = document.getElementById('pair').value;
   const lotType = document.getElementById('lotType').value;
   const risk = parseFloat(document.getElementById('risk').value);
   const sl = parseFloat(document.getElementById('sl').value);
-  if (!pairName || isNaN(risk) || isNaN(sl) || risk <= 0 || sl <= 0) {
+  if(!pairName || isNaN(risk) || isNaN(sl) || risk <= 0 || sl <= 0){
     document.getElementById('result').innerText = "Enter valid Risk and Stop-loss.";
     return;
   }
   const pair = pairs[pairName];
-  if (pair.commission === undefined || pair.commission === null) {
-    let comm = prompt(`Enter commission for ${pairName} ($ per 1 lot):`);
-    comm = parseFloat(comm);
-    if (isNaN(comm)) comm = 0;
-    pair.commission = comm;
-    localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs));
+  if(!pair){
+    document.getElementById('result').innerText = "Pair not found.";
+    return;
   }
-  let valuePerLot = 0;
-  switch (lotType) {
+  if(pair.commission === undefined || pair.commission === null) pair.commission = 0;
+  let valuePerLot=0;
+  switch(lotType){
     case "standardPoint": valuePerLot = pair.point; break;
-    case "miniPoint": valuePerLot = pair.point / 10; break;
-    case "microPoint": valuePerLot = pair.point / 100; break;
+    case "miniPoint": valuePerLot = pair.point/10; break;
+    case "microPoint": valuePerLot = pair.point/100; break;
     case "standardPip": valuePerLot = pair.pip; break;
-    case "miniPip": valuePerLot = pair.pip / 10; break;
-    case "microPip": valuePerLot = pair.pip / 100; break;
+    case "miniPip": valuePerLot = pair.pip/10; break;
+    case "microPip": valuePerLot = pair.pip/100; break;
   }
   const lot = risk / (sl * valuePerLot + pair.commission);
   document.getElementById('result').innerText = `Lot Size: ${lot.toFixed(2)} lots (Risk: $${risk}, SL: ${sl})`;
 }
 
-/* ---------------------------
-   Quick helpers
-   --------------------------- */
+/* ------------------------
+   Quick clear
+   ------------------------ */
 function quickClear(){
-  document.getElementById('risk').value = '';
-  document.getElementById('sl').value = '';
-  document.getElementById('result').innerText = '';
+  document.getElementById('risk').value=''; document.getElementById('sl').value=''; document.getElementById('result').innerText='';
 }
 
-/* ---------------------------
-   Add/Edit modal functions
-   --------------------------- */
-function openEdit(){
-  document.getElementById('editModal').style.display = 'flex';
-  document.getElementById('modalPassword').value = '';
-  document.getElementById('modalMsg').innerText = '';
-  document.getElementById('editContent').style.display = 'none';
-  document.getElementById('deleteEditView').style.display = 'none';
-  document.getElementById('deleteEditList').innerHTML = '';
-  document.getElementById('modalStep1').style.display = 'block';
-}
-function closeEditModal(){ document.getElementById('editModal').style.display = 'none'; }
-function checkModalPassword(){
-  const typed = (document.getElementById('modalPassword').value || '').trim();
-  const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || INITIAL_PASSWORD;
-  if (typed === real) {
-    document.getElementById('editContent').style.display = 'block';
-    document.getElementById('modalMsg').innerText = '';
-    document.getElementById('modalStep1').style.display = 'none';
-    const s = document.getElementById('pair').value;
-    if (pairs[s]) {
-      document.getElementById('newPair').value = s;
-      document.getElementById('pointValue').value = pairs[s].point;
-      document.getElementById('pipValue').value = pairs[s].pip;
-      document.getElementById('commissionValue').value = pairs[s].commission;
-    } else {
-      document.getElementById('newPair').value = '';
-      document.getElementById('pointValue').value = '';
-      document.getElementById('pipValue').value = '';
-      document.getElementById('commissionValue').value = '';
-    }
-  } else {
-    document.getElementById('modalMsg').innerText = 'Wrong password!';
-  }
-}
-function addOrEditPair(){
-  const name = (document.getElementById('newPair').value || '').toUpperCase().trim();
-  const point = parseFloat(document.getElementById('pointValue').value);
-  const pip = parseFloat(document.getElementById('pipValue').value);
-  const commission = parseFloat(document.getElementById('commissionValue').value);
-  if (!name || isNaN(point) || isNaN(pip) || isNaN(commission)) {
-    alert("Enter pair name, point, pip and commission.");
-    return;
-  }
-  pairs[name] = { point, pip, commission };
-  localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs));
-  populatePairs();
-  alert(name + " saved.");
-  closeEditModal();
-}
-
-/* ---------------------------
-   Delete/Edit modal with cloud/local distinction
-   --------------------------- */
-function openDeleteEditView(){
-  const listDiv = document.getElementById('deleteEditList');
-  listDiv.innerHTML = '';
-  Object.keys(pairs).sort().forEach(name=>{
-    const item = document.createElement('div');
-    item.className = 'delete-item';
-    const left = document.createElement('div');
-    left.style.display = 'flex';
-    left.style.alignItems = 'center';
-    left.style.gap='8px';
-    const lbl = document.createElement('div');
-    lbl.innerText = name + (pairs[name].cloud?" (C)":" (L)");
-    left.appendChild(lbl);
-    item.appendChild(left);
-
-    const btnGroup = document.createElement('div');
-    btnGroup.style.display='flex'; btnGroup.style.gap='4px';
-
-    const editBtn = document.createElement('button');
-    editBtn.innerText="Edit"; editBtn.className="secondary";
-    editBtn.onclick=()=>editPair(name);
-    btnGroup.appendChild(editBtn);
-
-    const delBtn = document.createElement('button');
-    delBtn.innerText="Delete"; delBtn.className="secondary";
-    delBtn.onclick=()=>deletePair(name);
-    btnGroup.appendChild(delBtn);
-
-    item.appendChild(btnGroup);
-    listDiv.appendChild(item);
-  });
-  document.getElementById('deleteEditView').style.display='block';
-}
-function closeDeleteEditView(){ document.getElementById('deleteEditView').style.display='none'; }
-
-function editPair(name){
-  const pair = pairs[name];
-  if (pair.cloud){
-    const pwd = prompt("Enter cloud password to edit this pair:");
-    if (pwd!==CLOUD_ADMIN_PASSWORD){ alert("Wrong cloud password!"); return; }
-  }
-  document.getElementById('newPair').value=name;
-  document.getElementById('pointValue').value=pair.point;
-  document.getElementById('pipValue').value=pair.pip;
-  document.getElementById('commissionValue').value=pair.commission;
-  // optional: show sync button (to push cloud edits)
-  alert("Edit values and click Save Pair to update. Use Sync Cloud button to push to cloud.");
-}
-
-function deletePair(name){
-  const pair = pairs[name];
-  if (pair.cloud){
-    const pwd = prompt("Enter cloud password to delete this pair:");
-    if (pwd!==CLOUD_ADMIN_PASSWORD){ alert("Wrong cloud password!"); return; }
-    // Delete from Firebase
-    db.collection("pairs").doc(name).delete().then(()=>{ alert(name+" deleted from cloud."); }).catch(()=>{ alert("Error deleting cloud pair."); });
-  }
-  delete pairs[name];
-  localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs));
-  populatePairs();
-  openDeleteEditView();
-}
-
-/* ---------------------------
-   Sync local pairs to cloud
-   --------------------------- */
-async function syncCloudPairs(){
-  const pwd = prompt("Enter cloud password to sync pairs:");
-  if (pwd!==CLOUD_ADMIN_PASSWORD){ alert("Wrong cloud password!"); return; }
-  const localPairs = Object.keys(pairs).filter(k=>!pairs[k].cloud);
-  if(localPairs.length===0){ alert("No local pairs to sync."); return; }
-
-  const selection = prompt("Enter pair names to sync separated by comma, or type 'all' for all: "+localPairs.join(","));
-  let toSync = [];
-  if(selection.trim().toLowerCase()==='all') toSync=localPairs;
-  else{
-    toSync = selection.split(",").map(s=>s.trim().toUpperCase()).filter(s=>localPairs.includes(s));
-  }
-  if(toSync.length===0){ alert("No valid pairs selected."); return; }
-
-  for(let name of toSync){
-    await db.collection("pairs").doc(name).set({...pairs[name],cloud:true});
-    pairs[name].cloud=true;
-  }
-  localStorage.setItem(STORAGE_KEY_PAIRS, JSON.stringify(pairs));
-  alert("Selected pairs synced to cloud.");
-}
-
-/* ---------------------------
-   Password & Lock logic
-   --------------------------- */
+/* ------------------------
+   Lock / Unlock logic
+   ------------------------ */
 function isUnlocked(){ return localStorage.getItem(STORAGE_KEY_UNLOCKED) === "true"; }
 function unlockApp(){
   const typed = (document.getElementById('passwordInput').value || '').trim();
   const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || INITIAL_PASSWORD;
-  if (typed === real){
+  if(typed === real){
     localStorage.setItem(STORAGE_KEY_UNLOCKED, "true");
     hideLock();
   } else {
     document.getElementById('lockMsg').innerText = "Wrong password. Try again.";
   }
 }
-function hideLock(){
-  const lock = document.getElementById('lockScreen');
-  if (lock) lock.style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'inline-block';
+function hideLock(){ document.getElementById('lockScreen').style.display='none'; document.getElementById('logoutBtn').style.display='inline-block'; }
+function showLock(){ document.getElementById('lockScreen').style.display='flex'; document.getElementById('logoutBtn').style.display='none'; }
+function logout(){ if(confirm("Logout will lock the app on this device. Continue?")){ localStorage.removeItem(STORAGE_KEY_UNLOCKED); showLock(); } }
+function showInfo(){ alert("Password asked only first time on a device. To re-lock use Logout."); }
+
+/* ------------------------
+   Modal open/close & edit/save pair
+   ------------------------ */
+function openEdit(){
+  document.getElementById('editModal').style.display='flex';
+  document.getElementById('modalPassword').value='';
+  document.getElementById('modalMsg').innerText='';
+  document.getElementById('editContent').style.display='none';
+  document.getElementById('syncArea').style.display='none';
+  document.getElementById('deleteEditArea').style.display='none';
+  // ensure edit fields are cleared
+  document.getElementById('newPair').value='';
+  document.getElementById('pointValue').value='';
+  document.getElementById('pipValue').value='';
+  document.getElementById('commissionValue').value='';
 }
-function showLock(){
-  const lock = document.getElementById('lockScreen');
-  if (lock) lock.style.display = 'flex';
-  document.getElementById('logoutBtn').style.display = 'none';
-}
-function logout(){
-  if (confirm("Logout will lock the app on this device. Continue?")){
-    localStorage.removeItem(STORAGE_KEY_UNLOCKED);
-    showLock();
+function closeEditModal(){ document.getElementById('editModal').style.display='none'; }
+
+function checkModalPassword(){
+  const typed = (document.getElementById('modalPassword').value||'').trim();
+  const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || INITIAL_PASSWORD;
+  if(typed === real){
+    document.getElementById('editContent').style.display='block';
+    document.getElementById('modalStep1').style.display='none';
+    // Pre-fill with selected pair data
+    const sel = document.getElementById('pair').value;
+    if(pairs[sel]){
+      document.getElementById('newPair').value = sel;
+      document.getElementById('pointValue').value = pairs[sel].point;
+      document.getElementById('pipValue').value = pairs[sel].pip;
+      document.getElementById('commissionValue').value = pairs[sel].commission;
+    }
+  } else {
+    document.getElementById('modalMsg').innerText = 'Wrong password!';
   }
 }
-function changePassword(){
-  const curr = prompt("Enter current password:");
-  if (curr === null) return;
-  const real = localStorage.getItem(STORAGE_KEY_PASSWORD) || INITIAL_PASSWORD;
-  if (curr !== real){ alert("Current password incorrect."); return; }
-  const np = prompt("Enter new password (min 4 chars):");
-  if (!np || np.length < 1){ alert("Invalid password."); return; }
-  localStorage.setItem(STORAGE_KEY_PASSWORD, np);
-  alert("Password updated.");
-}
-function showInfo(){ alert("Password asked only first time on a device. To re-lock use Logout. If you lose password you may reset app data or reinstall."); }
 
-/* ---------------------------
-   On load
-   --------------------------- */
-document.addEventListener('DOMContentLoaded', ()=>{
-  if (isUnlocked()) hideLock(); else showLock();
+function savePair(){
+  const name = (document.getElementById('newPair').value||'').toUpperCase().trim();
+  const point = parseFloat(document.getElementById('pointValue').value);
+  const pip = parseFloat(document.getElementById('pipValue').value);
+  const commission = parseFloat(document.getElementById('commissionValue').value);
+  if(!name || isNaN(point) || isNaN(pip) || isNaN(commission)){
+    alert("Enter valid pair, point, pip and commission.");
+    return;
+  }
+  // Save as local pair by default
+  pairs[name] = { point, pip, commission, type: (pairs[name] && pairs[name].type === 'cloud') ? 'cloud' : 'local' };
+  saveLocalPairs();
+  populatePairs();
+  alert(name + " saved.");
+  closeEditModal();
+}
+
+/* ------------------------
+   Sync Cloud area (checkbox selection)
+   ------------------------ */
+let cloudUnlockedForSync = false;
+function openSyncArea(){
+  document.getElementById('syncArea').style.display='block';
+  document.getElementById('syncList').innerHTML='';
+  document.getElementById('syncListContainer').style.display='none';
+  cloudUnlockedForSync = false;
+  document.getElementById('cloudPwd').value = '';
+}
+
+function closeSyncArea(){
+  document.getElementById('syncArea').style.display='none';
+  document.getElementById('syncList').innerHTML='';
+  document.getElementById('syncListContainer').style.display='none';
+  cloudUnlockedForSync = false;
+}
+
+function unlockCloudForSync(){
+  const pw = (document.getElementById('cloudPwd').value||'').trim();
+  if(pw !== CLOUD_PASSWORD){ alert("Wrong cloud password."); return; }
+  cloudUnlockedForSync = true;
+  // populate local pairs checkboxes (exclude cloud ones)
+  const list = document.getElementById('syncList');
+  list.innerHTML = '';
+  Object.keys(pairs).sort().forEach(k=>{
+    if(pairs[k].type === 'local'){
+      const item = document.createElement('div');
+      item.className = 'pair-item';
+      const left = document.createElement('div'); left.innerText = k;
+      const cb = document.createElement('input'); cb.type='checkbox'; cb.value=k;
+      item.prepend(cb);
+      item.appendChild(left);
+      list.appendChild(item);
+    }
+  });
+  document.getElementById('syncListContainer').style.display = 'block';
+}
+
+async function syncSelectedToCloud(){
+  if(!cloudUnlockedForSync){ alert("Unlock cloud first."); return; }
+  const selected = Array.from(document.querySelectorAll('#syncList input[type=checkbox]:checked')).map(i=>i.value);
+  if(selected.length === 0){ alert("Select at least one pair."); return; }
+  try{
+    for(const name of selected){
+      const p = pairs[name];
+      await db.collection('sharedPairs').doc(name).set({ point: p.point, pip: p.pip, commission: p.commission });
+      // mark as cloud locally
+      pairs[name].type = 'cloud';
+    }
+    saveLocalPairs();
+    populatePairs();
+    alert("Synced to cloud: " + selected.join(", "));
+    closeSyncArea();
+  }catch(e){
+    alert("Sync failed: " + e);
+  }
+}
+
+/* ------------------------
+   Delete / Edit area (list with C/L)
+   ------------------------ */
+function openDeleteEditArea(){
+  const list = document.getElementById('deleteEditList');
+  list.innerHTML = '';
+  Object.keys(pairs).sort().forEach(k=>{
+    const p = pairs[k];
+    const item = document.createElement('div'); item.className='pair-item';
+    const left = document.createElement('div'); left.innerText = k + ' (' + (p.type === 'cloud' ? 'C' : 'L') + ')';
+    const right = document.createElement('div');
+    right.style.display='flex'; right.style.gap='6px';
+    const editBtn = document.createElement('button'); editBtn.className='small-btn'; editBtn.innerText='Edit';
+    editBtn.onclick = ()=>triggerEditPair(k);
+    const delBtn = document.createElement('button'); delBtn.className='small-btn'; delBtn.innerText='Delete';
+    delBtn.onclick = ()=>triggerDeletePair(k);
+    right.appendChild(editBtn); right.appendChild(delBtn);
+    item.appendChild(left); item.appendChild(right);
+    list.appendChild(item);
+  });
+  document.getElementById('deleteEditList').style.display='block';
+  document.getElementById('deleteEditArea').style.display='block';
+}
+
+function closeDeleteEditArea(){
+  document.getElementById('deleteEditArea').style.display='none';
+  document.getElementById('deleteEditList').style.display='none';
+}
+
+/* trigger edit logic */
+async function triggerEditPair(name){
+  const p = pairs[name];
+  if(!p) return;
+  if(p.type === 'cloud'){
+    // require cloud password
+    const pw = prompt("Enter cloud password to edit this cloud pair:");
+    if(pw !== CLOUD_PASSWORD){ alert("Wrong cloud password."); return; }
+    // allow edit: populate fields and mark that saving should update cloud if user chooses to sync
+    document.getElementById('newPair').value = name;
+    document.getElementById('pointValue').value = p.point;
+    document.getElementById('pipValue').value = p.pip;
+    document.getElementById('commissionValue').value = p.commission;
+    alert("Edit the fields and click Save Pair. To push changes to cloud, click 'Sync Cloud' after saving.");
+  } else {
+    // local pair edit: no password
+    document.getElementById('newPair').value = name;
+    document.getElementById('pointValue').value = p.point;
+    document.getElementById('pipValue').value = p.pip;
+    document.getElementById('commissionValue').value = p.commission;
+    alert("Edit the fields and click Save Pair.");
+  }
+}
+
+/* trigger delete logic */
+async function triggerDeletePair(name){
+  const p = pairs[name];
+  if(!p) return;
+  if(p.type === 'cloud'){
+    const pw = prompt("Enter cloud password to delete this cloud pair:");
+    if(pw !== CLOUD_PASSWORD){ alert("Wrong cloud password."); return; }
+    // delete from firestore
+    try{
+      await db.collection('sharedPairs').doc(name).delete();
+    }catch(e){
+      console.warn("Cloud delete might have failed:", e);
+    }
+  }
+  // always remove locally
+  delete pairs[name];
+  saveLocalPairs();
+  populatePairs();
+  openDeleteEditArea(); // refresh list
+}
+
+/* ------------------------
+   Load cloud pairs on startup
+------------------------ */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  // merge default/local first already done
+  // then fetch cloud pairs and merge (cloud overrides point/pip)
+  try{
+    await loadCloudPairs();
+  }catch(e){}
+  populatePairs();
+  if(isUnlocked()) hideLock(); else showLock();
 });
 
-/* ---------------------------
-   Service worker registration
-   --------------------------- */
-if ('serviceWorker' in navigator) {
-  try { navigator.serviceWorker.register('service-worker.js?v=1.0.3').catch(()=>{}); } catch(e){}
+/* ------------------------
+   Fetch latest placeholder (you can replace source)
+------------------------ */
+async function fetchLatest(){
+  alert("Fetch latest pip values is a placeholder. Add your API source.");
+}
+
+/* ------------------------
+   Service worker (PWA)
+------------------------ */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('service-worker.js?v=1.0.5').catch(()=>{});
 }
 </script>
 </body>
