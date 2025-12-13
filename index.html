@@ -266,6 +266,9 @@ function startCloudListener(){
           point: data.point ?? (local ? local.point : 0),
           pip: data.pip ?? (local ? local.pip : 0),
           commission: (local && local.commission !== undefined) ? local.commission : (data.commission ?? 0),
+          order: typeof data.order === 'number'
+    ? data.order
+    : (local && typeof local.order === 'number' ? local.order : null),
           type: "cloud"
         };
       });
@@ -461,22 +464,84 @@ async function pushSelectedToCloud(){
    Delete / Edit list functions
    =========================== */
 function openDeleteEdit(){
-  const wrap = document.getElementById('deList'); if(!wrap) return;
+  const wrap = document.getElementById('deList');
+  if(!wrap) return;
   wrap.innerHTML = '';
-  Object.keys(pairs).sort().forEach(name=>{
-    const p = pairs[name];
-    const item = document.createElement('div'); item.className='pair-item';
-    const left = document.createElement('div'); left.innerText = name + ' (' + (p.type==='cloud'?'C':'L') + ')';
-    const right = document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
-    const editBtn = document.createElement('button'); editBtn.className='small-btn'; editBtn.innerText='Edit';
-    const delBtn = document.createElement('button'); delBtn.className='small-btn'; delBtn.innerText='Delete';
-    editBtn.onclick = ()=>editFromList(name);
-    delBtn.onclick = ()=>deleteFromList(name);
-    right.appendChild(editBtn); right.appendChild(delBtn);
-    item.appendChild(left); item.appendChild(right); wrap.appendChild(item);
+
+  const list = Object.keys(pairs).map(name => ({
+    name,
+    order: typeof pairs[name].order === 'number' ? pairs[name].order : null
+  }));
+
+  list.sort((a,b)=>{
+    if(a.order !== null && b.order !== null) return a.order - b.order;
+    if(a.order !== null) return -1;
+    if(b.order !== null) return 1;
+    return a.name.localeCompare(b.name);
   });
-  document.getElementById('deArea') && (document.getElementById('deArea').style.display='block');
+
+  list.forEach(({name})=>{
+    const p = pairs[name];
+    const item = document.createElement('div');
+    item.className = 'pair-item';
+
+    const left = document.createElement('div');
+    left.innerText = name + ' (' + (p.type === 'cloud' ? 'C' : 'L') + ')';
+
+    const right = document.createElement('div');
+    right.style.display = 'flex';
+    right.style.gap = '6px';
+
+    const topBtn = document.createElement('button');
+    topBtn.className = 'small-btn';
+    topBtn.innerText = '↑ Top';
+    topBtn.onclick = ()=>movePair(name,'top');
+
+    const bottomBtn = document.createElement('button');
+    bottomBtn.className = 'small-btn';
+    bottomBtn.innerText = '↓ Bottom';
+    bottomBtn.onclick = ()=>movePair(name,'bottom');
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'small-btn';
+    editBtn.innerText = 'Edit';
+    editBtn.onclick = ()=>editFromList(name);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'small-btn';
+    delBtn.innerText = 'Delete';
+    delBtn.onclick = ()=>deleteFromList(name);
+
+    right.append(topBtn,bottomBtn,editBtn,delBtn);
+    item.append(left,right);
+    wrap.appendChild(item);
+  });
+
+  document.getElementById('deArea').style.display='block';
 }
+function movePair(name, where){
+  const orders = Object.values(pairs)
+    .map(p=>p.order)
+    .filter(o=>typeof o === 'number');
+
+  const min = orders.length ? Math.min(...orders) : 0;
+  const max = orders.length ? Math.max(...orders) : 0;
+
+  if(where === 'top') pairs[name].order = min - 1;
+  if(where === 'bottom') pairs[name].order = max + 1;
+
+  saveLocalPairs();
+  populateDropdown();
+  openDeleteEdit();
+
+  if(pairs[name].type === 'cloud'){
+    db.collection(FIRE_COLLECTION)
+      .doc(name)
+      .update({ order: pairs[name].order })
+      .catch(()=>{});
+  }
+}
+
 function closeDeleteEdit(){ document.getElementById('deArea') && (document.getElementById('deArea').style.display='none'); }
 
 function editFromList(name){
