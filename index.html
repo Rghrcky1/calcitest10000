@@ -28,8 +28,9 @@
   .pair-item:last-child{border-bottom:0}
   .small-btn{padding:6px 8px;border-radius:6px;border:0;background:#eee;color:#111;cursor:pointer}
   /* modal */
-  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999;padding:12px}
-  .panel{background:#fff;padding:14px;border-radius:10px;max-width:720px;width:100%}
+  .modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999;padding:12px;
+  overflow-y:auto;}
+  .panel{background:#fff;padding:14px;border-radius:10px;max-height:90vh;overflow-y:auto;max-width:720px;width:100%}
   /* lot result styling */
   #lotResult {
     margin-top:12px;
