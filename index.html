@@ -174,12 +174,13 @@ const FIRE_COLLECTION = "cloudPairs"; // must match Firestore collection name
 
 /* ===== Firebase config - replace with your real values ===== */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+const firebaseConfig = {
+  apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
+  authDomain: "lotcalci.firebaseapp.com",
+  projectId: "lotcalci",
+  storageBucket: "lotcalci.firebasestorage.app",
+  messagingSenderId: "662389905318",
+  appId: "1:662389905318:web:3b9963ab853374ee606167"
 };
 
 try { firebase.initializeApp(firebaseConfig); } catch(e) { console.warn("firebase init:", e); }
