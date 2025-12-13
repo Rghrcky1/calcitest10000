@@ -1,78 +1,95 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Forex Lot Calculator</title>
 
-<style>
-body{margin:0;font-family:system-ui;background:#f4f6fb}
-.container{max-width:420px;margin:auto;padding:14px}
-.card{background:#fff;padding:16px;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.08)}
-label{display:block;margin-top:10px;font-weight:600}
-select,input,button{width:100%;margin-top:6px;padding:10px;border-radius:8px;border:1px solid #ccc;font-size:15px}
-button{background:#2563eb;color:#fff;border:none}
-button.secondary{background:#e5e7eb;color:#111}
-button.danger{background:#dc2626}
-.top{display:flex;justify-content:space-between;margin-bottom:10px}
-#logoutBtn{display:none}
+<!-- Firebase compat -->
+<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
 
-#result{margin-top:14px;text-align:center}
-#lotValue{
-  font-size:18px;
+<style>
+:root{--accent:#007bff;--bg:#f4f6fb;--card:#fff}
+*{box-sizing:border-box}
+html,body{margin:0;font-family:system-ui;background:var(--bg)}
+.wrap{max-width:720px;margin:40px auto;padding:12px}
+.card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+label{display:block;margin-top:10px;font-weight:600}
+select,input,button{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid #ccc;font-size:15px}
+button{background:var(--accent);color:#fff;border:none}
+button.secondary{background:#eee;color:#111}
+.row{display:flex;gap:8px;margin-top:10px}
+.row button{flex:1}
+
+#lotResult{
+  margin-top:12px;
+  text-align:center;
   font-weight:800;
+  font-size:18px;
   color:#0a1a55;
   background:#dce8ff;
-  display:inline-block;
-  padding:6px 14px;
+  padding:8px 14px;
   border-radius:8px;
+  display:none
 }
 
-/* lock */
-#lock{position:fixed;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center}
-#lockBox{background:#fff;padding:20px;border-radius:12px;width:90%;max-width:340px}
+/* ===== MODAL FIXED ===== */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.6);
+  display:none;
+  justify-content:center;
+  align-items:flex-start;
+  overflow-y:auto;
+  padding:20px 0;
+  z-index:9999
+}
+.panel{
+  background:#fff;
+  width:92%;
+  max-width:720px;
+  border-radius:12px;
+  padding:16px;
+  max-height:90vh;
+  overflow-y:auto
+}
 
-/* modal */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;justify-content:center;align-items:center;overflow-y:auto}
-.panel{background:#fff;width:92%;max-width:420px;border-radius:12px;padding:16px;max-height:90vh;overflow-y:auto}
-.small{font-size:13px;color:#555}
+.pair-list{border:1px solid #ddd;padding:8px;border-radius:8px;max-height:240px;overflow:auto}
+.pair-item{display:flex;justify-content:space-between;padding:6px;border-bottom:1px solid #eee}
+.pair-item:last-child{border-bottom:none}
+
+#logoutBtn{display:none}
 </style>
-
-<!-- Firebase COMPAT -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 
 <body>
 
-<!-- LOCK -->
-<div id="lock">
-  <div id="lockBox">
-    <h3>Unlock App</h3>
-    <input id="appPw" type="password" placeholder="App password">
-    <button onclick="unlock()">Unlock</button>
-    <div id="lockMsg" class="small"></div>
-  </div>
-</div>
-
-<div class="container">
-  <div class="top">
-    <button class="secondary" onclick="openModal()">Add / Edit</button>
-    <button class="secondary" id="logoutBtn" onclick="logout()">Logout</button>
-  </div>
-
+<div class="wrap">
   <div class="card">
+    <h3 style="text-align:center">Forex Lot Calculator</h3>
+
     <label>Pair</label>
-    <select id="pair"></select>
+    <select id="pairSelect"></select>
 
     <label>Risk ($)</label>
     <input id="risk" type="number">
 
-    <label>Stop Loss (pips)</label>
+    <label>Stop Loss (points / pips)</label>
     <input id="sl" type="number">
 
-    <button onclick="calc()">Calculate</button>
-    <div id="result"></div>
+    <div class="row">
+      <button onclick="calculateLot()">Calculate</button>
+      <button class="secondary" onclick="clearCalc()">Clear</button>
+    </div>
+
+    <div id="lotResult"></div>
+
+    <div class="row">
+      <button class="secondary" onclick="openModal()">Add / Edit / Sync</button>
+      <button class="secondary" id="logoutBtn" onclick="logout()">Logout</button>
+    </div>
   </div>
 </div>
 
@@ -80,26 +97,48 @@ button.danger{background:#dc2626}
 <div id="modal" class="modal">
   <div class="panel">
 
-    <div id="stepApp">
+    <div id="stepUnlock">
       <h3>Enter App Password</h3>
       <input id="modalAppPw" type="password">
-      <button onclick="unlockModal()">Continue</button>
-      <button class="secondary" onclick="closeModal()">Close</button>
+      <div class="row">
+        <button onclick="unlockModal()">Continue</button>
+        <button class="secondary" onclick="closeModal()">Close</button>
+      </div>
+      <div id="unlockErr"></div>
     </div>
 
     <div id="editor" style="display:none">
-      <h3>Local pairs</h3>
-      <div id="localList"></div>
+      <label>Pair</label>
+      <input id="editName">
 
-      <h3>Sync to Cloud</h3>
-      <input id="cloudPw" type="password" placeholder="Cloud password">
-      <button onclick="syncCloud()">Push Selected</button>
+      <label>Point</label>
+      <input id="editPoint" type="number">
 
-      <h3>Delete</h3>
-      <div id="deleteList"></div>
-      <button class="danger" onclick="deleteSelected()">Delete Selected</button>
+      <label>Pip</label>
+      <input id="editPip" type="number">
 
-      <button class="secondary" onclick="closeModal()">Close</button>
+      <label>Commission</label>
+      <input id="editCommission" type="number">
+
+      <div class="row">
+        <button onclick="saveLocalPair()">Save Local</button>
+        <button class="secondary" onclick="openSync()">Sync Cloud</button>
+      </div>
+
+      <div class="row">
+        <button class="secondary" onclick="openDelete()">Delete / Edit</button>
+        <button class="secondary" onclick="closeModal()">Close</button>
+      </div>
+
+      <div id="syncBox" style="display:none;margin-top:12px">
+        <input id="cloudPw" type="password" placeholder="Cloud password">
+        <button onclick="pushCloud()">Push Selected</button>
+        <div id="syncList" class="pair-list"></div>
+      </div>
+
+      <div id="deleteBox" style="display:none;margin-top:12px">
+        <div id="deleteList" class="pair-list"></div>
+      </div>
     </div>
 
   </div>
@@ -111,7 +150,7 @@ const APP_PASSWORD="6565";
 const CLOUD_PASSWORD="123456";
 const STORE_KEY="fx_pairs";
 
-/* ===== FIREBASE CONFIG (PASTE YOURS) ===== */
+/* ===== FIREBASE CONFIG (PUT YOURS) ===== */
 const firebaseConfig = {
   apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
   authDomain: "lotcalci.firebaseapp.com",
@@ -125,102 +164,105 @@ const db=firebase.firestore();
 
 /* ===== DEFAULT PAIRS ===== */
 const defaults={
-  EURUSD:{point:1.0, pip:10.0, commission:4},
-  GBPUSD:{point:1.0, pip:10.0, commission:4,},
-  AUDUSD:{pip:10,commission:4},
-  NZDUSD:{pip:10,commission:4},
-  USDJPY:{pip:6.9,commission:4},
-  USDCAD:{pip:10,commission:4},
-  USDCHF:{pip:9.1,commission:4},
-  EURJPY:{pip:7.6,commission:4},
-  AUDJPY:{pip:6.3,commission:4},
-  XAUUSD:{pip:10,commission:0.0008}
+  EURUSD:{point:1,pip:10,commission:4,type:"local"},
+  GBPUSD:{point:1,pip:10,commission:4,type:"local"},
+  AUDUSD:{point:1,pip:10,commission:4,type:"local"},
+  NZDUSD:{point:1,pip:10,commission:4,type:"local"},
+  USDJPY:{point:.69,pip:6.9,commission:4,type:"local"},
+  USDCAD:{point:1,pip:10,commission:4,type:"local"},
+  USDCHF:{point:.91,pip:9.1,commission:4,type:"local"},
+  EURJPY:{point:.76,pip:7.6,commission:4,type:"local"},
+  AUDJPY:{point:.63,pip:6.3,commission:4,type:"local"},
+  XAUUSD:{point:1,pip:10,commission:.0008,type:"local"}
 };
 
-let pairs=JSON.parse(localStorage.getItem(STORE_KEY))||{...defaults};
+let pairs=JSON.parse(localStorage.getItem(STORE_KEY))||defaults;
 localStorage.setItem(STORE_KEY,JSON.stringify(pairs));
 
-/* ===== INIT ===== */
 function fill(){
-  pair.innerHTML="";
+  pairSelect.innerHTML="";
   Object.keys(pairs).forEach(k=>{
     let o=document.createElement("option");
-    o.value=k;o.textContent=k;
-    pair.appendChild(o);
+    o.value=k;
+    o.textContent=k+(pairs[k].type==="cloud"?" (C)":" (L)");
+    pairSelect.appendChild(o);
   });
 }
 fill();
 
 /* ===== CALC ===== */
-function calc(){
-  const p=pairs[pair.value];
+function calculateLot(){
+  const p=pairs[pairSelect.value];
   const r=+risk.value,s=+sl.value;
   if(!p||!r||!s)return;
-  const lot=r/(s*p.pip+p.commission);
-  result.innerHTML=`Lot Size<br><span id="lotValue">${lot.toFixed(2)}</span>`;
+  const lot=r/(s*p.point+p.commission);
+  lotResult.style.display="block";
+  lotResult.textContent="Lot Size: "+lot.toFixed(2);
 }
+function clearCalc(){lotResult.style.display="none";risk.value="";sl.value=""}
 
 /* ===== LOCK ===== */
-function unlock(){
-  if(appPw.value===APP_PASSWORD){
-    localStorage.setItem("unlocked","1");
-    lock.style.display="none";
-    logoutBtn.style.display="inline-block";
-  }else lockMsg.textContent="Wrong password";
-}
-if(localStorage.getItem("unlocked")==="1"){
-  lock.style.display="none";
-  logoutBtn.style.display="inline-block";
-}
 function logout(){
   localStorage.removeItem("unlocked");
   location.reload();
 }
+if(localStorage.getItem("unlocked")==="1"){
+  logoutBtn.style.display="inline-block";
+}
 
 /* ===== MODAL ===== */
-function openModal(){
-  modal.style.display="flex";
-  stepApp.style.display="block";
-  editor.style.display="none";
-}
+function openModal(){modal.style.display="flex";stepUnlock.style.display="block";editor.style.display="none"}
 function closeModal(){modal.style.display="none"}
 function unlockModal(){
   if(modalAppPw.value===APP_PASSWORD){
-    stepApp.style.display="none";
+    localStorage.setItem("unlocked","1");
+    logoutBtn.style.display="inline-block";
+    stepUnlock.style.display="none";
     editor.style.display="block";
-    renderLists();
-  }
+  }else unlockErr.textContent="Wrong password";
 }
 
-/* ===== LISTS ===== */
-function renderLists(){
-  localList.innerHTML="";
-  deleteList.innerHTML="";
+/* ===== LOCAL SAVE ===== */
+function saveLocalPair(){
+  const n=editName.value.toUpperCase();
+  pairs[n]={point:+editPoint.value,pip:+editPip.value,commission:+editCommission.value,type:"local"};
+  localStorage.setItem(STORE_KEY,JSON.stringify(pairs));
+  fill();alert("Saved");
+}
+
+/* ===== SYNC ===== */
+function openSync(){
+  syncBox.style.display="block";
+  syncList.innerHTML="";
   Object.keys(pairs).forEach(k=>{
-    localList.innerHTML+=`<label><input type="checkbox" value="${k}"> ${k}</label>`;
-    deleteList.innerHTML+=`<label><input type="checkbox" value="${k}"> ${k}</label>`;
+    if(pairs[k].type==="local")
+      syncList.innerHTML+=`<label><input type="checkbox" value="${k}"> ${k}</label><br>`;
   });
 }
-
-/* ===== CLOUD ===== */
-async function syncCloud(){
-  if(cloudPw.value!==CLOUD_PASSWORD) return alert("Wrong cloud password");
-  const cbs=[...localList.querySelectorAll("input:checked")];
-  for(const c of cbs){
+async function pushCloud(){
+  if(cloudPw.value!==CLOUD_PASSWORD)return alert("Wrong cloud password");
+  [...syncList.querySelectorAll("input:checked")].forEach(async c=>{
     await db.collection("cloudPairs").doc(c.value).set(pairs[c.value]);
-  }
-  alert("Synced to cloud");
+    pairs[c.value].type="cloud";
+  });
+  localStorage.setItem(STORE_KEY,JSON.stringify(pairs));
+  fill();alert("Synced");
 }
 
-async function deleteSelected(){
-  const cbs=[...deleteList.querySelectorAll("input:checked")];
-  for(const c of cbs){
-    delete pairs[c.value];
-    await db.collection("cloudPairs").doc(c.value).delete().catch(()=>{});
-  }
+/* ===== DELETE ===== */
+function openDelete(){
+  deleteBox.style.display="block";
+  deleteList.innerHTML="";
+  Object.keys(pairs).forEach(k=>{
+    deleteList.innerHTML+=`<button onclick="del('${k}')">${k}</button><br>`;
+  });
+}
+async function del(k){
+  if(pairs[k].type==="cloud" && prompt("Cloud password")!==CLOUD_PASSWORD)return;
+  await db.collection("cloudPairs").doc(k).delete().catch(()=>{});
+  delete pairs[k];
   localStorage.setItem(STORE_KEY,JSON.stringify(pairs));
-  fill();
-  renderLists();
+  fill();openDelete();
 }
 </script>
 </body>
