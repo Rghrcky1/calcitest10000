@@ -125,8 +125,8 @@ const db=firebase.firestore();
 
 /* ===== DEFAULT PAIRS ===== */
 const defaults={
-  EURUSD:{pip:10,commission:4},
-  GBPUSD:{pip:10,commission:4},
+  EURUSD:{point:1.0, pip:10.0, commission:4, type:"local"},
+  GBPUSD:{point:1.0, pip:10.0, commission:4, type:"local"},
   AUDUSD:{pip:10,commission:4},
   NZDUSD:{pip:10,commission:4},
   USDJPY:{pip:6.9,commission:4},
