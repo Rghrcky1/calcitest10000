@@ -226,13 +226,27 @@ function populateDropdown(){
   const sel = document.getElementById('pairSelect');
   if(!sel) return;
   sel.innerHTML = '';
-  Object.keys(pairs).sort().forEach(name=>{
+
+  const list = Object.keys(pairs).map(name => ({
+    name,
+    order: typeof pairs[name].order === 'number' ? pairs[name].order : null
+  }));
+
+  list.sort((a,b)=>{
+    if(a.order !== null && b.order !== null) return a.order - b.order;
+    if(a.order !== null) return -1;
+    if(b.order !== null) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  list.forEach(({name})=>{
     const opt = document.createElement('option');
     opt.value = name;
     opt.text = pairs[name].type === 'cloud' ? `${name} (C)` : `${name} (L)`;
     sel.appendChild(opt);
   });
 }
+
 populateDropdown();
 
 /* ===========================
