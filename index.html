@@ -174,7 +174,6 @@ const FIRE_COLLECTION = "cloudPairs"; // must match Firestore collection name
 
 /* ===== Firebase config - replace with your real values ===== */
 const firebaseConfig = {
-const firebaseConfig = {
   apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
   authDomain: "lotcalci.firebaseapp.com",
   projectId: "lotcalci",
@@ -182,7 +181,6 @@ const firebaseConfig = {
   messagingSenderId: "662389905318",
   appId: "1:662389905318:web:3b9963ab853374ee606167"
 };
-
 try { firebase.initializeApp(firebaseConfig); } catch(e) { console.warn("firebase init:", e); }
 const db = firebase.firestore();
 
