@@ -1,6 +1,6 @@
 {
-  "name": "Forex Lot Calculator",
-  "short_name": "LotCalc",
+  "name": "R Fx",
+  "short_name": "R Fx",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#ffffff",
