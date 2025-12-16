@@ -326,9 +326,21 @@ function calculateLot(){
     case "microPip": v = p.pip / 100; break;
   }
   const lot = risk / (sl * v + comm);
-  const el = document.getElementById('lotResult');
-  el.innerText = `Lot Size: ${lot.toFixed(2)} lots`;
-  el.style.display = 'inline-block';
+
+// breakdown calculations
+const amt = lot * sl * v;
+const comAmt = lot * comm;
+const total = amt + comAmt;
+
+const el = document.getElementById('lotResult');
+el.innerHTML = `
+  <div><b>Lot Size:</b> ${lot.toFixed(2)} lots</div>
+  <div><b>Amt:</b> ${amt.toFixed(2)}</div>
+  <div><b>Com:</b> ${comAmt.toFixed(2)}</div>
+  <div><b>Total:</b> ${total.toFixed(2)}</div>
+`;
+el.style.display = 'inline-block';
+
 }
 function clearCalc(){
   document.getElementById('risk').value=''; document.getElementById('sl').value=''; document.getElementById('lotResult').style.display='none';
