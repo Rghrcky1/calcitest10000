@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>₹@ⓖ$ 𝕱✗ — Final</title>
+
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -27,10 +28,13 @@ button.secondary{background:#eee;color:#111}
 #lotResult{margin-top:12px;text-align:center;font-weight:700;color:#06204a;font-size:18px;background:#e8f0ff;display:inline-block;padding:6px 12px;border-radius:8px;box-shadow:0 2px 6px rgba(10,20,60,0.06)}
 .modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999;padding:12px;overflow-y:auto;}
 .panel{background:#fff;padding:14px;border-radius:10px;max-height:90vh;overflow-y:auto;max-width:720px;width:100%}
+#lockOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:9999;}
+#lockOverlay div{background:#fff;padding:20px;border-radius:12px;text-align:center;max-width:320px;width:90%;}
 @media (max-width:480px){.row{flex-direction:column}.row button{width:100%}}
 </style>
 </head>
 <body>
+
 <div class="wrap">
 <div class="card">
 <h1>₹@ⓖ$ 𝕱✗</h1>
@@ -69,7 +73,17 @@ button.secondary{background:#eee;color:#111}
 </div>
 </div>
 
-<!-- modal omitted for brevity (keep your original modal code here) -->
+<!-- Lock Overlay -->
+<div id="lockOverlay">
+  <div>
+    <h3>App Locked</h3>
+    <input id="unlockPwInput" type="password" placeholder="Enter password" style="width:100%;padding:8px;margin:10px 0;border-radius:6px;border:1px solid #ccc;">
+    <button onclick="unlockFromOverlay()" style="width:100%;padding:10px;border-radius:8px;border:0;background:#007bff;color:#fff;">Unlock</button>
+    <div id="overlayErr" style="color:#b00020;margin-top:6px;font-size:14px;"></div>
+  </div>
+</div>
+
+<!-- Modal omitted for brevity (use your original modal) -->
 
 <script>
 /* =========================== CONFIG =========================== */
@@ -107,18 +121,10 @@ try { firebase.initializeApp({
 }); } catch(e){ console.warn("firebase init:",e); }
 const db = firebase.firestore();
 
-/* =========================== Load / Save Local Pairs =========================== */
+/* =========================== Local Pairs =========================== */
 let pairs = {};
-function loadLocalPairs(){
-  try{
-    const raw = localStorage.getItem(LOCAL_KEY);
-    const saved = raw ? JSON.parse(raw) : {};
-    pairs = saved;
-  }catch(e){ pairs={}; }
-}
-function saveLocalPairs(){
-  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs)); } catch(e){}
-}
+function loadLocalPairs(){ try{ pairs = JSON.parse(localStorage.getItem(LOCAL_KEY)||'{}'); }catch(e){pairs={}} }
+function saveLocalPairs(){ try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs)); }catch(e){} }
 
 /* =========================== Dropdown =========================== */
 function populateDropdown(){
@@ -163,27 +169,34 @@ function calculateLot(){
 }
 function clearCalc(){document.getElementById('risk').value='';document.getElementById('sl').value='';document.getElementById('lotResult').style.display='none';}
 
-/* =========================== Unlock / Logout =========================== */
-function unlockModal(){
-  const v=(document.getElementById('modalAppPw').value||'').trim();
+/* =========================== Lock Overlay =========================== */
+function showLockOverlay(){document.getElementById('lockOverlay').style.display='flex';}
+function hideLockOverlay(){document.getElementById('lockOverlay').style.display='none';}
+function unlockFromOverlay(){
+  const val=document.getElementById('unlockPwInput').value.trim();
   const stored=localStorage.getItem(LOCAL_KEY+"_pw")||APP_PASSWORD;
-  if(v===stored){
-    document.getElementById('stepUnlock').style.display='none';
-    document.getElementById('editor').style.display='block';
+  if(val===stored){
     localStorage.setItem('fx_unlocked','1');
     localStorage.setItem('fx_last_unlock', now());
-    const ver=localStorage.getItem(PASS_VERSION_KEY)||'1';
+    const ver = localStorage.getItem(PASS_VERSION_KEY) || '1';
     localStorage.setItem('fx_local_pass_ver', ver);
+    hideLockOverlay();
     document.getElementById('logoutBtn').style.display='inline-block';
-  } else {document.getElementById('unlockErr').innerText="Wrong app password.";}
+  } else { document.getElementById('overlayErr').innerText="Wrong password."; }
 }
-function logout(){forceLock(); document.getElementById('logoutBtn').style.display='none'; alert("Logged out.");}
+
+/* =========================== Logout =========================== */
+function logout(){
+  forceLock();
+  document.getElementById('logoutBtn').style.display='none';
+  showLockOverlay();
+}
 
 /* =========================== Init =========================== */
 document.addEventListener('DOMContentLoaded',()=>{
   populateDropdown();
-  if(!isSessionValid()){ forceLock(); alert("Session expired. Enter password."); }
-  else{ document.getElementById('logoutBtn').style.display='inline-block'; }
+  if(!isSessionValid()){ forceLock(); showLockOverlay(); }
+  else{ hideLockOverlay(); document.getElementById('logoutBtn').style.display='inline-block'; }
 });
 </script>
 </body>
