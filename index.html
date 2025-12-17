@@ -359,21 +359,18 @@ function clearCalc(){
 /* ===========================
    Lock / Unlock UI
    =========================== */
-function isUnlocked(){ return localStorage.getItem('fx_unlocked') === '1'; }
+
+function isUnlocked(){
+  return localStorage.getItem('fx_unlocked') === '1';
+}
+
 function logout(){
-function logout(){
+  // 🔒 clear session
   localStorage.removeItem('fx_unlocked');
   localStorage.removeItem('fx_last_unlock');
 
-  // hide app
-  document.getElementById('appWrap').style.display = 'none';
-
-  // close modal if open
-  document.getElementById('modal').style.display = 'none';
-
-  alert("App locked. Please login again.");
-}
-
+  // 🔁 HARD reload = guaranteed lock
+  location.reload();
 }
 
 /* ===========================
