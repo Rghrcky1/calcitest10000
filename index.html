@@ -383,11 +383,17 @@ function unlockModal(){
   const v = (document.getElementById('modalAppPw').value || '').trim();
   const stored = localStorage.getItem(LOCAL_KEY + "_pw") || APP_PASSWORD;
   if(v === stored){
-    localStorage.setItem('fx_unlocked', '1');
-    localStorage.setItem('fx_last_unlock', Date.now());
-    
-    document.getElementById('stepUnlock').style.display='none';
-    document.getElementById('editor').style.display='block';
+    if(v === stored){
+  // 🔓 MARK APP AS UNLOCKED
+  localStorage.setItem('fx_unlocked', '1');
+
+  // 🕒 SAVE LOGIN TIME
+  localStorage.setItem('fx_last_unlock', Date.now());
+
+  document.getElementById('stepUnlock').style.display='none';
+  document.getElementById('editor').style.display='block';
+}
+
     // autofill editor with current selection
     const sel = document.getElementById('pairSelect').value;
     if(pairs[sel]){
@@ -625,15 +631,26 @@ function checkAutoLogout(){
    =========================== */
 document.addEventListener('DOMContentLoaded', ()=>{
   
-  /* 🔒 AUTO LOGOUT AFTER 24 HOURS */
-  const last = Number(localStorage.getItem('fx_last_unlock'));
-  const MAX_TIME = 24 * 60 * 60 * 1000; // 24 hours
+/* 🔒 AUTO LOGOUT AFTER 24 HOURS */
+const last = Number(localStorage.getItem('fx_last_unlock'));
+const MAX_TIME = 24 * 60 * 60 * 1000; // 24 hours
 
-  if(last && Date.now() - last > MAX_TIME){
-    localStorage.removeItem('fx_unlocked');
-    localStorage.removeItem('fx_last_unlock');
-    alert("Session expired. Please login again.");
-  }
+if(last && Date.now() - last > MAX_TIME){
+  localStorage.removeItem('fx_unlocked');
+  localStorage.removeItem('fx_last_unlock');
+
+  alert("Session expired. Please login again.");
+
+  // 🔴 FORCE LOCK SCREEN
+  const lock = document.getElementById('lockScreen');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  if(lock) lock.style.display = 'flex';
+  if(logoutBtn) logoutBtn.style.display = 'none';
+
+  return; // ⛔ stop app from loading unlocked UI
+}
+
   populateDropdown();
   // Start cloud listener already started above - ensure UI shows logout if unlocked
   if(localStorage.getItem('fx_unlocked') === '1'){
