@@ -59,16 +59,16 @@ button.secondary{background:#eee;color:#111}
 <input id="sl" type="number" placeholder="e.g. 15">
 
 <div class="row">
-<button onclick="calculateLot()">Calculate Lot Size</button>
-<button class="secondary" onclick="clearCalc()">Clear</button>
+<button onclick="if(ensureUnlocked(calculateLot)){ calculateLot(); }">Calculate Lot Size</button>
+<button class="secondary" onclick="if(ensureUnlocked(clearCalc)){ clearCalc(); }">Clear</button>
 </div>
 
 <div id="lotResult" aria-live="polite" style="display:none"></div>
 
 <div class="row" style="margin-top:12px">
-<button class="secondary" onclick="openModal()">Add / Edit / Sync</button>
+<button class="secondary" onclick="if(ensureUnlocked(openModal)){ openModal(); }">Add / Edit / Sync</button>
 <button class="secondary" id="logoutBtn" onclick="logout()" style="display:none">Logout</button>
-<button class="secondary" onclick="reloadCloud()">Reload Cloud</button>
+<button class="secondary" onclick="if(ensureUnlocked(reloadCloud)){ reloadCloud(); }">Reload Cloud</button>
 </div>
 </div>
 </div>
@@ -83,7 +83,7 @@ button.secondary{background:#eee;color:#111}
   </div>
 </div>
 
-<!-- Modal omitted for brevity (use your original modal) -->
+<!-- Modal: Use your existing Add/Edit/Sync modal here exactly as before -->
 
 <script>
 /* =========================== CONFIG =========================== */
@@ -100,6 +100,8 @@ function forceLock(){
   localStorage.removeItem('fx_last_unlock');
   localStorage.removeItem('fx_local_pass_ver');
 }
+
+/* =========================== SESSION MANAGEMENT =========================== */
 function isSessionValid(){
   if(localStorage.getItem('fx_unlocked') !== '1') return false;
   const t = Number(localStorage.getItem('fx_last_unlock')||0);
@@ -107,6 +109,15 @@ function isSessionValid(){
   const localVer = localStorage.getItem('fx_local_pass_ver');
   const globalVer = localStorage.getItem(PASS_VERSION_KEY);
   if(localVer && globalVer && localVer!==globalVer) return false;
+  return true;
+}
+
+function ensureUnlocked(action){
+  if(!isSessionValid()){
+    showLockOverlay();
+    return false;
+  }
+  localStorage.setItem('fx_last_unlock', now());
   return true;
 }
 
