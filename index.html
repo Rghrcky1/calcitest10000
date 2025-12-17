@@ -632,7 +632,6 @@ function checkAutoLogout(){
    =========================== */
 document.addEventListener('DOMContentLoaded', ()=>{
 
-  const app = document.getElementById('appWrap');
   const logoutBtn = document.getElementById('logoutBtn');
 
   const unlocked = localStorage.getItem('fx_unlocked') === '1';
@@ -646,17 +645,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
     alert("Session expired. Please login again.");
   }
 
-  // 🔐 Show or hide app
+  // 🔐 Show / hide logout button
   if(localStorage.getItem('fx_unlocked') === '1'){
-    app.style.display = 'block';
     if(logoutBtn) logoutBtn.style.display = 'inline-block';
   } else {
-    app.style.display = 'none';
     if(logoutBtn) logoutBtn.style.display = 'none';
   }
 
   populateDropdown();
 });
+
 
 </script>
 </body>
