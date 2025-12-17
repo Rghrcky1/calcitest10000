@@ -658,13 +658,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   populateDropdown();
 });
 
-  // Start cloud listener already started above - ensure UI shows logout if unlocked
-  if(localStorage.getItem('fx_unlocked') === '1'){
-    document.getElementById('logoutBtn') && (document.getElementById('logoutBtn').style.display='inline-block');
-  } else {
-    document.getElementById('logoutBtn') && (document.getElementById('logoutBtn').style.display='none');
-  }
-});
 </script>
 </body>
 </html>
