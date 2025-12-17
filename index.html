@@ -353,12 +353,19 @@ function clearCalc(){
    =========================== */
 function isUnlocked(){ return localStorage.getItem('fx_unlocked') === '1'; }
 function logout(){
-  if(confirm("Logout will lock the app on this device. Continue?")){
-    localStorage.removeItem('fx_unlocked');
-    document.getElementById('logoutBtn') && (document.getElementById('logoutBtn').style.display='none');
-    // show lock overlay (simple prompt)
-    alert("App locked. Reopen to unlock.");
-  }
+function logout(){
+  localStorage.removeItem('fx_unlocked');
+  localStorage.removeItem('fx_last_unlock');
+
+  // hide app
+  document.getElementById('appWrap').style.display = 'none';
+
+  // close modal if open
+  document.getElementById('modal').style.display = 'none';
+
+  alert("App locked. Please login again.");
+}
+
 }
 
 /* ===========================
@@ -641,23 +648,21 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   // ⏱ Auto logout after 24h
   if(unlocked && last && Date.now() - last > MAX_TIME){
-    localStorage.removeItem('fx_unlocked');
-    localStorage.removeItem('fx_last_unlock');
-    alert("Session expired. Please login again.");
+    logout();
+    return;
   }
 
-  // ✅ ALWAYS show app
-  appWrap.style.display = 'block';
-
-  // 🔐 Logout button only if unlocked
-  if(localStorage.getItem('fx_unlocked') === '1'){
+  if(unlocked){
+    appWrap.style.display = 'block';
     logoutBtn && (logoutBtn.style.display = 'inline-block');
   } else {
+    appWrap.style.display = 'none';
     logoutBtn && (logoutBtn.style.display = 'none');
   }
 
   populateDropdown();
 });
+
 
 
 
