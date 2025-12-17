@@ -60,7 +60,7 @@
 </style>
 </head>
 <body>
-  <div class="wrap" id="appWrap" style="display:none">
+  <div class="wrap" id="appWrap" >
     <div class="card">
       <h1>₹@ⓖ$ 𝕱✗</h1>
 
@@ -632,6 +632,7 @@ function checkAutoLogout(){
    =========================== */
 document.addEventListener('DOMContentLoaded', ()=>{
 
+  const appWrap = document.getElementById('appWrap');
   const logoutBtn = document.getElementById('logoutBtn');
 
   const unlocked = localStorage.getItem('fx_unlocked') === '1';
@@ -645,15 +646,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
     alert("Session expired. Please login again.");
   }
 
-  // 🔐 Show / hide logout button
+  // ✅ ALWAYS show app
+  appWrap.style.display = 'block';
+
+  // 🔐 Logout button only if unlocked
   if(localStorage.getItem('fx_unlocked') === '1'){
-    if(logoutBtn) logoutBtn.style.display = 'inline-block';
+    logoutBtn && (logoutBtn.style.display = 'inline-block');
   } else {
-    if(logoutBtn) logoutBtn.style.display = 'none';
+    logoutBtn && (logoutBtn.style.display = 'none');
   }
 
   populateDropdown();
 });
+
 
 
 </script>
