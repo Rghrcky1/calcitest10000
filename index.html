@@ -178,7 +178,8 @@
 const APP_PASSWORD = "6565";
 const CLOUD_PASSWORD = "123456";
 const LOCAL_KEY = "fx_pairs_v_final";
-const FIRE_COLLECTION = "cloudPairs"; // must match Firestore collection name
+const FIRE_COLLECTION = "cloudPairs";
+const AUTO_LOGOUT_HOURS = 24;
 
 /* ===== Firebase config - replace with your real values ===== */
 const firebaseConfig = {
@@ -382,6 +383,9 @@ function unlockModal(){
   const v = (document.getElementById('modalAppPw').value || '').trim();
   const stored = localStorage.getItem(LOCAL_KEY + "_pw") || APP_PASSWORD;
   if(v === stored){
+    localStorage.setItem('fx_unlocked', '1');
+    localStorage.setItem('fx_last_unlock', Date.now());
+    
     document.getElementById('stepUnlock').style.display='none';
     document.getElementById('editor').style.display='block';
     // autofill editor with current selection
@@ -604,9 +608,32 @@ async function reloadCloud(){
 }
 
 /* ===========================
+   AUTO LOGOUT CHECKER (STEP 1B)
+   =========================== */
+function checkAutoLogout(){
+  const last = localStorage.getItem('fx_last_unlock');
+  if(!last) return;
+
+  const hoursPassed = (Date.now() - Number(last)) / (1000 * 60 * 60);
+  if(hoursPassed >= AUTO_LOGOUT_HOURS){
+    alert("Session expired. Please login again.");
+    logout();
+  }
+}
+/* ===========================
    Init (DOM ready)
    =========================== */
 document.addEventListener('DOMContentLoaded', ()=>{
+  
+  /* 🔒 AUTO LOGOUT AFTER 24 HOURS */
+  const last = Number(localStorage.getItem('fx_last_unlock'));
+  const MAX_TIME = 24 * 60 * 60 * 1000; // 24 hours
+
+  if(last && Date.now() - last > MAX_TIME){
+    localStorage.removeItem('fx_unlocked');
+    localStorage.removeItem('fx_last_unlock');
+    alert("Session expired. Please login again.");
+  }
   populateDropdown();
   // Start cloud listener already started above - ensure UI shows logout if unlocked
   if(localStorage.getItem('fx_unlocked') === '1'){
