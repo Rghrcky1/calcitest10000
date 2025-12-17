@@ -172,6 +172,14 @@
   </div>
 
 <script>
+  // 🔒 HARD APP LOCK (GLOBAL)
+if (localStorage.getItem('fx_unlocked') !== '1') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const app = document.getElementById('appWrap');
+    if (app) app.style.display = 'none';
+  });
+}
+
 /* ===========================
    CONFIG
    =========================== */
@@ -646,21 +654,28 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const last = Number(localStorage.getItem('fx_last_unlock'));
   const MAX_TIME = 24 * 60 * 60 * 1000;
 
-  // ⏱ Auto logout after 24h
+  // ⏱ FORCE AUTO LOGOUT
   if(unlocked && last && Date.now() - last > MAX_TIME){
-    logout();
+    localStorage.removeItem('fx_unlocked');
+    localStorage.removeItem('fx_last_unlock');
+    alert("Session expired. Please login again.");
+    location.reload(); // ⛔ HARD RESET
     return;
   }
 
-  if(unlocked){
-    appWrap.style.display = 'block';
-    logoutBtn && (logoutBtn.style.display = 'inline-block');
-  } else {
+  if(!unlocked){
     appWrap.style.display = 'none';
     logoutBtn && (logoutBtn.style.display = 'none');
+    return; // ⛔ STOP EXECUTION
   }
 
+  // ✅ Only unlocked users reach here
+  appWrap.style.display = 'block';
+  logoutBtn && (logoutBtn.style.display = 'inline-block');
+
   populateDropdown();
+});
+
 });
 
 
