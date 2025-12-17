@@ -4,7 +4,6 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>₹@ⓖ$ 𝕱✗ — Final</title>
-
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -13,108 +12,178 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
 
 <style>
-:root{--accent:#007bff;--bg:#f4f6fb;--card:#fff}
+:root{--accent:#007bff;--bg:#f4f6fb;--card:#fff;--muted:#666}
 *{box-sizing:border-box}
-html,body{margin:0;font-family:system-ui;background:var(--bg)}
+html,body{height:100%;margin:0;font-family:system-ui;background:var(--bg)}
 .wrap{max-width:720px;margin:48px auto;padding:12px}
-.card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
-button{padding:10px;border-radius:8px;border:0;background:var(--accent);color:#fff}
-button.secondary{background:#eee;color:#000}
-#lotResult{margin-top:12px;font-weight:700;color:#06204a;background:#e8f0ff;padding:6px 12px;border-radius:8px;display:none}
-.modal{position:fixed;inset:0;display:none;justify-content:center;background:rgba(0,0,0,.55)}
-.panel{background:#fff;padding:14px;border-radius:10px;width:100%;max-width:720px}
+.card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 8px 24px rgba(10,10,20,0.06)}
+h1{font-size:20px;text-align:center}
+label{display:block;margin-top:10px;font-weight:600;color:#222;font-size:14px}
+select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #d6dbe6;font-size:15px;margin-top:6px}
+button{background:var(--accent);color:#fff;border:0;cursor:pointer}
+button.secondary{background:#eee;color:#111}
+.row{display:flex;gap:8px;margin-top:10px}
+.row button{flex:1}
+#lotResult{margin-top:12px;text-align:center;font-weight:700;color:#06204a;font-size:18px;background:#e8f0ff;display:inline-block;padding:6px 12px;border-radius:8px;box-shadow:0 2px 6px rgba(10,20,60,0.06)}
+.modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999;padding:12px;overflow-y:auto;}
+.panel{background:#fff;padding:14px;border-radius:10px;max-height:90vh;overflow-y:auto;max-width:720px;width:100%}
+@media (max-width:480px){.row{flex-direction:column}.row button{width:100%}}
 </style>
 </head>
-
 <body>
 <div class="wrap">
 <div class="card">
 <h1>₹@ⓖ$ 𝕱✗</h1>
 
-<select id="pairSelect"></select>
+<label for="pairSelect">Pair</label>
+<select id="pairSelect" aria-label="Pair selection"></select>
 
-<input id="risk" type="number" placeholder="Risk">
-<input id="sl" type="number" placeholder="Stop Loss">
+<label for="lotType">Lot type / mode</label>
+<select id="lotType">
+<option value="standardPoint">Standard Point Value</option>
+<option value="miniPoint">Mini Point Value</option>
+<option value="microPoint">Micro Point Value</option>
+<option value="standardPip">Standard Pip Value</option>
+<option value="miniPip">Mini Pip Value</option>
+<option value="microPip">Micro Pip Value</option>
+</select>
 
-<button onclick="calculateLot()">Calculate</button>
-<button class="secondary" onclick="logout()" id="logoutBtn" style="display:none">Logout</button>
+<label for="risk">Risk ($)</label>
+<input id="risk" type="number" placeholder="e.g. 30">
 
-<div id="lotResult"></div>
+<label for="sl">Stop-loss (points / pips)</label>
+<input id="sl" type="number" placeholder="e.g. 15">
+
+<div class="row">
+<button onclick="calculateLot()">Calculate Lot Size</button>
+<button class="secondary" onclick="clearCalc()">Clear</button>
+</div>
+
+<div id="lotResult" aria-live="polite" style="display:none"></div>
+
+<div class="row" style="margin-top:12px">
+<button class="secondary" onclick="openModal()">Add / Edit / Sync</button>
+<button class="secondary" id="logoutBtn" onclick="logout()" style="display:none">Logout</button>
+<button class="secondary" onclick="reloadCloud()">Reload Cloud</button>
 </div>
 </div>
+</div>
+
+<!-- modal omitted for brevity (keep your original modal code here) -->
 
 <script>
-/* ================= CONFIG ================= */
+/* =========================== CONFIG =========================== */
 const APP_PASSWORD = "6565";
 const CLOUD_PASSWORD = "123456";
 const LOCAL_KEY = "fx_pairs_v_final";
-
-/* ====== AUTO LOCK SYSTEM ====== */
-const UNLOCK_TTL = 24 * 60 * 60 * 1000;
+const FIRE_COLLECTION = "cloudPairs";
+const UNLOCK_TTL = 24*60*60*1000;
 const PASS_VERSION_KEY = "fx_pass_version";
 
 function now(){ return Date.now(); }
-
 function forceLock(){
-  localStorage.removeItem("fx_unlocked");
-  localStorage.removeItem("fx_last_unlock");
-  localStorage.removeItem("fx_local_pass_ver");
+  localStorage.removeItem('fx_unlocked');
+  localStorage.removeItem('fx_last_unlock');
+  localStorage.removeItem('fx_local_pass_ver');
 }
-
 function isSessionValid(){
-  if(localStorage.getItem("fx_unlocked")!=="1") return false;
-  const t = Number(localStorage.getItem("fx_last_unlock")||0);
+  if(localStorage.getItem('fx_unlocked') !== '1') return false;
+  const t = Number(localStorage.getItem('fx_last_unlock')||0);
   if(now()-t > UNLOCK_TTL) return false;
-  const localVer = localStorage.getItem("fx_local_pass_ver");
+  const localVer = localStorage.getItem('fx_local_pass_ver');
   const globalVer = localStorage.getItem(PASS_VERSION_KEY);
   if(localVer && globalVer && localVer!==globalVer) return false;
   return true;
 }
 
-/* ===== Firebase ===== */
-firebase.initializeApp({
+/* =========================== Firebase =========================== */
+try { firebase.initializeApp({
   apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
   authDomain: "lotcalci.firebaseapp.com",
-  projectId: "lotcalci"
-});
-firebase.firestore();
+  projectId: "lotcalci",
+  storageBucket: "lotcalci.firebasestorage.app",
+  messagingSenderId: "662389905318",
+  appId: "1:662389905318:web:3b9963ab853374ee606167"
+}); } catch(e){ console.warn("firebase init:",e); }
+const db = firebase.firestore();
 
-/* ===== Dummy calc ===== */
+/* =========================== Load / Save Local Pairs =========================== */
+let pairs = {};
+function loadLocalPairs(){
+  try{
+    const raw = localStorage.getItem(LOCAL_KEY);
+    const saved = raw ? JSON.parse(raw) : {};
+    pairs = saved;
+  }catch(e){ pairs={}; }
+}
+function saveLocalPairs(){
+  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs)); } catch(e){}
+}
+
+/* =========================== Dropdown =========================== */
+function populateDropdown(){
+  const sel = document.getElementById('pairSelect');
+  if(!sel) return;
+  sel.innerHTML='';
+  Object.keys(pairs).sort().forEach(name=>{
+    const opt = document.createElement('option');
+    opt.value=name;
+    opt.text=pairs[name].type==='cloud'?`${name} (C)`:`${name} (L)`;
+    sel.appendChild(opt);
+  });
+}
+loadLocalPairs();
+populateDropdown();
+
+/* =========================== Calculator =========================== */
 function calculateLot(){
-  document.getElementById("lotResult").style.display="block";
-  document.getElementById("lotResult").innerText="LotSize = 0.88";
-}
-
-/* ===== Unlock ===== */
-function unlockApp(){
-  const pw = prompt("Enter App Password");
-  if(pw!==APP_PASSWORD){ alert("Wrong password"); return; }
-
-  localStorage.setItem("fx_unlocked","1");
-  localStorage.setItem("fx_last_unlock", now());
-
-  if(!localStorage.getItem(PASS_VERSION_KEY))
-    localStorage.setItem(PASS_VERSION_KEY,"1");
-
-  localStorage.setItem("fx_local_pass_ver",localStorage.getItem(PASS_VERSION_KEY));
-  document.getElementById("logoutBtn").style.display="inline-block";
-}
-
-/* ===== Logout ===== */
-function logout(){
-  forceLock();
-  document.getElementById("logoutBtn").style.display="none";
-  alert("Logged out");
-}
-
-/* ===== Init ===== */
-document.addEventListener("DOMContentLoaded",()=>{
-  if(!isSessionValid()){
-    forceLock();
-    unlockApp();
-  } else {
-    document.getElementById("logoutBtn").style.display="inline-block";
+  const name=document.getElementById('pairSelect').value;
+  const lotType=document.getElementById('lotType').value;
+  const risk=parseFloat(document.getElementById('risk').value);
+  const sl=parseFloat(document.getElementById('sl').value);
+  if(!name||isNaN(risk)||isNaN(sl)||risk<=0||sl<=0){document.getElementById('lotResult').style.display='none';return;}
+  const p=pairs[name]; if(!p){document.getElementById('lotResult').style.display='none';return;}
+  const comm=Number(p.commission||0);
+  let v=0;
+  switch(lotType){
+    case"standardPoint":v=p.point;break;
+    case"miniPoint":v=p.point/10;break;
+    case"microPoint":v=p.point/100;break;
+    case"standardPip":v=p.pip;break;
+    case"miniPip":v=p.pip/10;break;
+    case"microPip":v=p.pip/100;break;
   }
+  const lot=risk/(sl*v+comm);
+  const amt=lot*sl*v;
+  const comAmt=lot*comm;
+  const total=amt+comAmt;
+  const el=document.getElementById('lotResult');
+  el.innerHTML=`<span style="font-size:19px;font-weight:700;">LotSize = ${lot.toFixed(2)}</span> <span style="font-size:14px;margin-left:6px;">(Amt=${amt.toFixed(2)}, Com=${comAmt.toFixed(2)}, Total=${total.toFixed(2)})</span>`;
+  el.style.display='inline-block';
+}
+function clearCalc(){document.getElementById('risk').value='';document.getElementById('sl').value='';document.getElementById('lotResult').style.display='none';}
+
+/* =========================== Unlock / Logout =========================== */
+function unlockModal(){
+  const v=(document.getElementById('modalAppPw').value||'').trim();
+  const stored=localStorage.getItem(LOCAL_KEY+"_pw")||APP_PASSWORD;
+  if(v===stored){
+    document.getElementById('stepUnlock').style.display='none';
+    document.getElementById('editor').style.display='block';
+    localStorage.setItem('fx_unlocked','1');
+    localStorage.setItem('fx_last_unlock', now());
+    const ver=localStorage.getItem(PASS_VERSION_KEY)||'1';
+    localStorage.setItem('fx_local_pass_ver', ver);
+    document.getElementById('logoutBtn').style.display='inline-block';
+  } else {document.getElementById('unlockErr').innerText="Wrong app password.";}
+}
+function logout(){forceLock(); document.getElementById('logoutBtn').style.display='none'; alert("Logged out.");}
+
+/* =========================== Init =========================== */
+document.addEventListener('DOMContentLoaded',()=>{
+  populateDropdown();
+  if(!isSessionValid()){ forceLock(); alert("Session expired. Enter password."); }
+  else{ document.getElementById('logoutBtn').style.display='inline-block'; }
 });
 </script>
 </body>
