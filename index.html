@@ -4,11 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>₹@ⓖ$ 𝕱✗ — Final</title>
-<!-- App Icons -->
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
-
-<!-- PWA Manifest -->
 <link rel="manifest" href="manifest.json">
 
 <!-- Firebase scripts -->
@@ -17,27 +14,27 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
 
 <style>
-  :root{--accent:#007bff;--bg:#f4f6fb;--card:#fff;--muted:#666}
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:var(--bg);-webkit-font-smoothing:antialiased}
-  .wrap{max-width:720px;margin:48px auto;padding:12px}
-  .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 8px 24px rgba(10,10,20,0.06)}
-  h1{text-align:center;font-size:20px;margin-bottom:12px}
-  label{display:block;margin-top:10px;font-weight:600;color:#222;font-size:14px}
-  select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #d6dbe6;font-size:15px;margin-top:6px}
-  button{background:var(--accent);color:#fff;border:0;cursor:pointer}
-  button.secondary{background:#eee;color:#111}
-  .small{font-size:13px;color:#666;margin-top:8px}
-  .row{display:flex;gap:8px;margin-top:10px}
-  .row button{flex:1}
-  .pair-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;background:#fafafa;margin-top:8px}
-  .pair-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
-  .pair-item:last-child{border-bottom:0}
-  .small-btn{padding:6px 8px;border-radius:6px;border:0;background:#eee;color:#111;cursor:pointer}
-  .modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999;padding:12px;overflow-y:auto;}
-  .panel{background:#fff;padding:14px;border-radius:10px;max-height:90vh;overflow-y:auto;max-width:720px;width:100%}
-  #lotResult {margin-top:12px;text-align:center;font-weight:700;color:#06204a;font-size:18px;background:#e8f0ff;display:inline-block;padding:6px 12px;border-radius:8px;box-shadow:0 2px 6px rgba(10,20,60,0.06);}
-  @media (max-width:480px){.row{flex-direction:column}.row button{width:100%}}
+:root{--accent:#007bff;--bg:#f4f6fb;--card:#fff;--muted:#666}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:var(--bg);-webkit-font-smoothing:antialiased}
+.wrap{max-width:720px;margin:48px auto;padding:12px}
+.card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 8px 24px rgba(10,10,20,0.06)}
+h1{text-align:center;font-size:20px;margin-bottom:12px}
+label{display:block;margin-top:10px;font-weight:600;color:#222;font-size:14px}
+select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #d6dbe6;font-size:15px;margin-top:6px}
+button{background:var(--accent);color:#fff;border:0;cursor:pointer}
+button.secondary{background:#eee;color:#111}
+.small{font-size:13px;color:#666;margin-top:8px}
+.row{display:flex;gap:8px;margin-top:10px}
+.row button{flex:1}
+.pair-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;background:#fafafa;margin-top:8px}
+.pair-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
+.pair-item:last-child{border-bottom:0}
+.small-btn{padding:6px 8px;border-radius:6px;border:0;background:#eee;color:#111;cursor:pointer}
+.modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999;padding:12px;overflow-y:auto;}
+.panel{background:#fff;padding:14px;border-radius:10px;max-height:90vh;overflow-y:auto;max-width:720px;width:100%}
+#lotResult{margin-top:12px;text-align:center;font-weight:700;color:#06204a;font-size:18px;background:#e8f0ff;display:inline-block;padding:6px 12px;border-radius:8px;box-shadow:0 2px 6px rgba(10,20,60,0.06);}
+@media(max-width:480px){.row{flex-direction:column}.row button{width:100%}}
 </style>
 </head>
 <body>
@@ -45,7 +42,7 @@
   <div class="card">
     <h1>₹@ⓖ$ 𝕱✗</h1>
 
-    <!-- Login/Signup -->
+    <!-- Authentication Section -->
     <div id="authSection">
       <input id="email" type="email" placeholder="Email">
       <input id="password" type="password" placeholder="Password">
@@ -53,12 +50,19 @@
       <div class="row" style="margin-top:10px">
         <button id="loginBtn">Login</button>
         <button id="signupBtn">Sign Up</button>
+        <button id="createBtn" style="display:none">Create</button>
       </div>
       <button class="secondary" id="forgotBtn" style="margin-top:6px">Forgot Password?</button>
       <div id="authMsg" class="small"></div>
     </div>
 
-    <!-- Calculator -->
+    <!-- Admin Dashboard -->
+    <div id="adminSection" style="display:none;margin-top:20px">
+      <h3>Admin Dashboard</h3>
+      <div id="userList" class="pair-list"></div>
+    </div>
+
+    <!-- Calculator Section -->
     <div id="calcSection" style="display:none">
       <label for="pairSelect">Pair</label>
       <select id="pairSelect"></select>
@@ -89,7 +93,7 @@
   </div>
 </div>
 
-<!-- Modal for editing/syncing (same as before) -->
+<!-- Modal Editor -->
 <div id="modal" class="modal" aria-hidden="true">
   <div class="panel" role="dialog" aria-modal="true">
     <h3>Add / Edit / Sync Pairs</h3>
@@ -103,14 +107,56 @@
       <div id="unlockErr" class="small" style="color:#b00020"></div>
     </div>
     <div id="editor" style="display:none;margin-top:12px">
-      <!-- same editor inputs as before -->
+      <label>Pair code (e.g. EURUSD)</label>
+      <input id="editName" placeholder="PAIR (uppercase)">
+      <label>Point value (1 standard lot)</label>
+      <input id="editPoint" type="number" placeholder="point">
+      <label>Pip value (1 standard lot)</label>
+      <input id="editPip" type="number" placeholder="pip">
+      <label>Commission ($ per 1 lot)</label>
+      <input id="editCommission" type="number" placeholder="commission">
+      <div class="row" style="margin-top:8px">
+        <button onclick="saveLocalPair()">Save Local</button>
+        <button class="secondary" onclick="openSyncArea()">Sync Cloud</button>
+        <button class="secondary" onclick="openDeleteEdit()">Delete / Edit</button>
+      </div>
+      <div style="margin-top:8px">
+        <button class="secondary" onclick="closeModal()">Close</button>
+      </div>
+
+      <!-- Sync area -->
+      <div id="syncArea" style="display:none;margin-top:12px">
+        <div class="small">Enter Cloud Password</div>
+        <input id="cloudPw" type="password" placeholder="Cloud password">
+        <div class="row" style="margin-top:8px">
+          <button onclick="unlockCloudForSync()">Unlock Cloud</button>
+          <button class="secondary" onclick="closeSyncArea()">Cancel</button>
+        </div>
+        <div id="syncListWrap" style="display:none;margin-top:10px">
+          <div class="small">Select LOCAL pairs to push to cloud</div>
+          <div id="syncList" class="pair-list"></div>
+          <div class="row" style="margin-top:8px">
+            <button onclick="pushSelectedToCloud()">Push Selected to Cloud</button>
+            <button class="secondary" onclick="closeSyncArea()">Done</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delete/Edit area -->
+      <div id="deArea" style="display:none;margin-top:12px">
+        <div class="small">Pairs (C = cloud, L = local)</div>
+        <div id="deList" class="pair-list"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="secondary" onclick="closeDeleteEdit()">Close</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-/* ===== Firebase projects ===== */
-// Auth project
+// ===================== Firebase Projects =====================
+// Auth Project
 const authApp = firebase.initializeApp({
   apiKey: "AIzaSyBf-D1KYMJ_b3_1Dog7AkJ8b0MST0fD_9g",
   authDomain: "auth-9bef7.firebaseapp.com",
@@ -122,7 +168,7 @@ const authApp = firebase.initializeApp({
 const auth = authApp.auth();
 const authDb = authApp.firestore();
 
-// Cloud project (calculator data)
+// Cloud Project
 const cloudApp = firebase.initializeApp({
   apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
   authDomain: "lotcalci.firebaseapp.com",
@@ -133,77 +179,93 @@ const cloudApp = firebase.initializeApp({
 }, "cloudApp");
 const db = cloudApp.firestore();
 
-/* ===== Global vars ===== */
+// ===================== Global Vars =====================
 const APP_PASSWORD="6565";
 const CLOUD_PASSWORD="123456";
 const LOCAL_KEY="fx_pairs_v_final";
 const FIRE_COLLECTION="cloudPairs";
-let pairs = {};
+let pairs={};
 
-/* ===================== Authentication ===================== */
-document.getElementById('signupBtn').onclick = async ()=>{
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-  const confirm = document.getElementById('confirmPassword').value;
-  if(password !== confirm){ showMsg("Passwords do not match"); return; }
-  try{
-    const userCred = await auth.createUserWithEmailAndPassword(email,password);
-    // Add user to Firestore with status pending
-    await authDb.collection("users").doc(userCred.user.uid).set({email,status:"pending"});
-    showMsg("Signup successful! Waiting for admin approval.");
-  }catch(e){ showMsg(e.message); }
+// ===================== Authentication =====================
+function showMsg(msg){document.getElementById('authMsg').innerText=msg;}
+
+document.getElementById('signupBtn').onclick=()=>{
+  document.getElementById('confirmPassword').style.display='inline-block';
+  document.getElementById('createBtn').style.display='inline-block';
 };
 
-document.getElementById('loginBtn').onclick = async ()=>{
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
+document.getElementById('createBtn').onclick=async ()=>{
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('password').value;
+  const confirm=document.getElementById('confirmPassword').value;
+  if(!email || !password || !confirm){showMsg("Fill all fields");return;}
+  if(password!==confirm){showMsg("Passwords do not match");return;}
   try{
-    const userCred = await auth.signInWithEmailAndPassword(email,password);
-    const doc = await authDb.collection("users").doc(userCred.user.uid).get();
-    const status = doc.exists ? doc.data().status : "pending";
-    if(status !== "approved"){ auth.signOut(); showMsg("Not approved by admin yet"); return; }
-    // success → show calculator
+    const userCred=await auth.createUserWithEmailAndPassword(email,password);
+    await authDb.collection("users").doc(userCred.user.uid).set({email,status:"pending"});
+    showMsg("Account created! Wait for admin approval.");
+    document.getElementById('confirmPassword').value='';
+  }catch(e){showMsg(e.message);}
+};
+
+document.getElementById('loginBtn').onclick=async ()=>{
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('password').value;
+  try{
+    const userCred=await auth.signInWithEmailAndPassword(email,password);
+    const doc=await authDb.collection("users").doc(userCred.user.uid).get();
+    const status=doc.exists?doc.data().status:"pending";
+    if(status!=="approved"){auth.signOut();showMsg("Not approved yet");return;}
     document.getElementById('authSection').style.display='none';
     document.getElementById('calcSection').style.display='block';
-    loadLocalPairs();
-    populateDropdown();
-  }catch(e){ showMsg(e.message); }
+    loadLocalPairs();populateDropdown();
+  }catch(e){showMsg(e.message);}
 };
 
-document.getElementById('forgotBtn').onclick = async ()=>{
-  const email = document.getElementById('email').value.trim();
-  if(!email){ showMsg("Enter email first"); return; }
-  try{ await auth.sendPasswordResetEmail(email); showMsg("Reset link sent"); }
-  catch(e){ showMsg(e.message); }
+document.getElementById('forgotBtn').onclick=async ()=>{
+  const email=document.getElementById('email').value.trim();
+  if(!email){showMsg("Enter email first");return;}
+  try{await auth.sendPasswordResetEmail(email);showMsg("Reset link sent");}catch(e){showMsg(e.message);}
 };
 
-function showMsg(msg){ document.getElementById('authMsg').innerText = msg; }
+// ===================== Admin Dashboard =====================
+auth.onAuthStateChanged(async user=>{
+  if(!user) return;
+  const adminEmail="admin@example.com"; // replace with your admin email
+  if(user.email===adminEmail){
+    document.getElementById('adminSection').style.display='block';
+    const users=await authDb.collection("users").get();
+    const wrap=document.getElementById('userList');
+    wrap.innerHTML='';
+    users.forEach(doc=>{
+      const data=doc.data();
+      const div=document.createElement('div'); div.className='pair-item';
+      div.innerHTML=`<span>${data.email} (${data.status})</span>
+        <div style="display:flex;gap:6px">
+          <button class="small-btn" onclick="updateStatus('${doc.id}','approved')">Approve</button>
+          <button class="small-btn" onclick="updateStatus('${doc.id}','rejected')">Reject</button>
+        </div>`;
+      wrap.appendChild(div);
+    });
+  }
+});
 
-/* ================= Calculator & Cloud code ================= */
-// Paste all your previous calculator & cloud code here (unchanged) including:
-// - loadLocalPairs, saveLocalPairs
-// - populateDropdown
-// - startCloudListener
-// - calculateLot, clearCalc
-// - modal, unlockModal, saveLocalPair
-// - pushSelectedToCloud, deleteFromList, reloadCloud, etc.
+async function updateStatus(uid,status){
+  await authDb.collection("users").doc(uid).update({status});
+  alert("User " + status);
+  location.reload();
+}
 
-// At logout
+// ===================== Calculator & Cloud functions =====================
+// Include all your existing functions: loadLocalPairs(), saveLocalPairs(), populateDropdown(), startCloudListener(), calculateLot(), clearCalc(), modal unlock, saveLocalPair, pushSelectedToCloud, deleteFromList, reloadCloud, etc.
+
+// Logout
 function logout(){
   auth.signOut();
   document.getElementById('calcSection').style.display='none';
   document.getElementById('authSection').style.display='block';
   showMsg("Logged out");
 }
-
-/* DOM Ready */
-document.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('loginBtn').style.display='inline-block';
-  document.getElementById('confirmPassword').style.display='none';
-  document.getElementById('signupBtn').onclick = ()=>{
-    document.getElementById('confirmPassword').style.display='inline-block';
-  };
-});
 </script>
 </body>
 </html>
