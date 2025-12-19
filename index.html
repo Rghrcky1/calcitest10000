@@ -28,23 +28,9 @@ button.secondary{background:#eee;color:#111}
 .row{display:flex;gap:8px;margin-top:10px}
 .row button{flex:1}
 .pair-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;background:#fafafa;margin-top:8px}
-.pair-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
+.pair-item{display:flex;align-items:center;justify-content:space-between;padding:6px;border-bottom:1px solid #eee}
 .pair-item:last-child{border-bottom:0}
-.small-btn {
-  padding: 3px 6px;
-  border-radius: 6px;
-  border: 0;
-  background: #eee;
-  color: #111;
-  cursor: pointer;
-  font-size: 12px;
-  margin-left: 4px;
-}
-.pair-item div {
-  display: flex;
-  gap: 2px;
-}
-
+.small-btn{padding:4px 6px;border-radius:6px;border:0;background:#eee;color:#111;cursor:pointer;font-size:12px}
 .modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999;padding:12px;overflow-y:auto;}
 .panel{background:#fff;padding:14px;border-radius:10px;max-height:90vh;overflow-y:auto;max-width:720px;width:100%}
 #lotResult{margin-top:12px;text-align:center;font-weight:700;color:#06204a;font-size:18px;background:#e8f0ff;display:inline-block;padding:6px 12px;border-radius:8px;box-shadow:0 2px 6px rgba(10,20,60,0.06);}
@@ -170,7 +156,6 @@ button.secondary{background:#eee;color:#111}
 
 <script>
 // ===================== Firebase Projects =====================
-
 // Auth Project
 const authApp = firebase.initializeApp({
   apiKey: "AIzaSyBf-D1KYMJ_b3_1Dog7AkJ8b0MST0fD_9g",
@@ -201,61 +186,115 @@ const LOCAL_KEY="fx_pairs_v_final";
 const FIRE_COLLECTION="cloudPairs";
 let pairs={};
 
-// ===================== Load / Save Pairs =====================
-const defaultPairs = {};
+// ===================== Authentication =====================
+function showMsg(msg){document.getElementById('authMsg').innerText=msg;}
 
+document.getElementById('signupBtn').onclick=()=>{
+  document.getElementById('confirmPassword').style.display='inline-block';
+  document.getElementById('createBtn').style.display='inline-block';
+};
+
+document.getElementById('createBtn').onclick=async ()=>{
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('password').value;
+  const confirm=document.getElementById('confirmPassword').value;
+  if(!email || !password || !confirm){showMsg("Fill all fields");return;}
+  if(password!==confirm){showMsg("Passwords do not match");return;}
+  try{
+    const userCred=await auth.createUserWithEmailAndPassword(email,password);
+    await authDb.collection("users").doc(userCred.user.uid).set({email,status:"pending"});
+    showMsg("Account created! Wait for admin approval.");
+    document.getElementById('confirmPassword').value='';
+  }catch(e){showMsg(e.message);}
+};
+
+document.getElementById('loginBtn').onclick=async ()=>{
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('password').value;
+  try{
+    const userCred=await auth.signInWithEmailAndPassword(email,password);
+    const doc=await authDb.collection("users").doc(userCred.user.uid).get();
+    const status=doc.exists?doc.data().status:"pending";
+    if(status!=="approved"){auth.signOut();showMsg("Not approved yet");return;}
+    document.getElementById('authSection').style.display='none';
+    document.getElementById('calcSection').style.display='block';
+    loadLocalPairs();populateDropdown();
+  }catch(e){showMsg(e.message);}
+};
+
+document.getElementById('forgotBtn').onclick=async ()=>{
+  const email=document.getElementById('email').value.trim();
+  if(!email){showMsg("Enter email first");return;}
+  try{await auth.sendPasswordResetEmail(email);showMsg("Reset link sent");}catch(e){showMsg(e.message);}
+};
+
+// ===================== Admin Dashboard =====================
+auth.onAuthStateChanged(async user=>{
+  if(!user) return;
+  const adminEmail="admin@example.com"; // replace with your admin email
+  if(user.email===adminEmail){
+    document.getElementById('adminSection').style.display='block';
+    const users=await authDb.collection("users").get();
+    const wrap=document.getElementById('userList');
+    wrap.innerHTML='';
+    users.forEach(doc=>{
+      const data=doc.data();
+      const div=document.createElement('div'); div.className='pair-item';
+      div.innerHTML=`<span>${data.email} (${data.status})</span>
+        <div style="display:flex;gap:6px">
+          <button class="small-btn" onclick="updateStatus('${doc.id}','approved')">Approve</button>
+          <button class="small-btn" onclick="updateStatus('${doc.id}','rejected')">Reject</button>
+        </div>`;
+      wrap.appendChild(div);
+    });
+  }
+});
+
+async function updateStatus(uid,status){
+  await authDb.collection("users").doc(uid).update({status});
+  alert("User " + status);
+  location.reload();
+}
+
+// ===================== Calculator + Cloud functions =====================
+
+// Default pairs
+const defaultPairs={};
 function loadLocalPairs(){
   const raw = localStorage.getItem(LOCAL_KEY);
   const saved = raw ? JSON.parse(raw) : {};
-  pairs = JSON.parse(JSON.stringify(defaultPairs));
+  pairs=JSON.parse(JSON.stringify(defaultPairs));
   Object.keys(saved).forEach(k=>pairs[k]=saved[k]);
 }
-
-function saveLocalPairs(){
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs));
-}
-
+function saveLocalPairs(){localStorage.setItem(LOCAL_KEY,JSON.stringify(pairs));}
 function populateDropdown(){
-  const sel=document.getElementById('pairSelect');
-  if(!sel) return;
+  const sel=document.getElementById('pairSelect'); if(!sel) return;
   sel.innerHTML='';
-  const list=Object.keys(pairs).map(name=>({name,order:typeof pairs[name].order==='number'?pairs[name].order:null}));
-  list.sort((a,b)=>{
-    if(a.order!==null&&b.order!==null) return a.order-b.order;
-    if(a.order!==null) return -1;
-    if(b.order!==null) return 1;
-    return a.name.localeCompare(b.name);
-  });
+  const list=Object.keys(pairs).map(name=>({name,order:pairs[name].order??null}));
+  list.sort((a,b)=>{if(a.order!==null&&b.order!==null)return a.order-b.order;if(a.order!==null)return -1;if(b.order!==null)return 1;return a.name.localeCompare(b.name);});
   list.forEach(({name})=>{
-    const opt=document.createElement('option');
-    opt.value=name;
-    opt.text=pairs[name].type==='cloud'?`${name} (C)`:`${name} (L)`;
+    const opt=document.createElement('option'); opt.value=name;
+    opt.text=pairs[name].type==='cloud'?`${name} (C)`${name} (L)`;
     sel.appendChild(opt);
   });
 }
 
 // ===================== Cloud Listener =====================
-let unsubscribeSnapshot = null;
+let unsubscribeSnapshot=null;
 function startCloudListener(){
   if(unsubscribeSnapshot) unsubscribeSnapshot();
   unsubscribeSnapshot=db.collection(FIRE_COLLECTION).onSnapshot(snapshot=>{
     snapshot.forEach(doc=>{
-      const name=doc.id;
-      const data=doc.data();
+      const name=doc.id; const data=doc.data();
       const local=pairs[name];
-      pairs[name]={point:data.point??(local?local.point:0),pip:data.pip??(local?local.pip:0),commission:(local&&local.commission!==undefined)?local.commission:(data.commission??0),order:typeof data.order==='number'?data.order:(local&&typeof local.order==='number'?local.order:null),type:'cloud'};
+      pairs[name]={point:data.point??(local?local.point:0),pip:data.pip??(local?local.pip:0),commission:(local&&local.commission!==undefined)?local.commission:(data.commission??0),order:typeof data.order==='number'?data.order:(local&&typeof local.order==='number'?local.order:null),type:"cloud"};
     });
     const cloudIds=new Set(snapshot.docs.map(d=>d.id));
-    Object.keys(pairs).forEach(k=>{
-      if(pairs[k].type==='cloud'&&!cloudIds.has(k)){
-        if(defaultPairs[k]) pairs[k]=JSON.parse(JSON.stringify(defaultPairs[k]));
-        else delete pairs[k];
-      }
-    });
-    saveLocalPairs();
-    populateDropdown();
-  },err=>{console.warn("cloud listener error:",err)});
+    Object.keys(pairs).forEach(k=>{if(pairs[k].type==='cloud'&&!cloudIds.has(k)){if(defaultPairs[k])pairs[k]=JSON.parse(JSON.stringify(defaultPairs[k]));else delete pairs[k];}});
+    saveLocalPairs();populateDropdown();
+  },err=>console.warn("cloud onSnapshot error:",err));
 }
+startCloudListener();
 
 // ===================== Calculator =====================
 function calculateLot(){
@@ -264,170 +303,70 @@ function calculateLot(){
   const risk=parseFloat(document.getElementById('risk').value);
   const sl=parseFloat(document.getElementById('sl').value);
   if(!name||isNaN(risk)||isNaN(sl)||risk<=0||sl<=0){document.getElementById('lotResult').style.display='none';return;}
-  const p=pairs[name];
-  if(!p){document.getElementById('lotResult').style.display='none';return;}
-  const comm=Number(p.commission||0);
-  let v=0;
-  switch(lotType){
-    case "standardPoint": v=p.point; break;
-    case "miniPoint": v=p.point/10; break;
-    case "microPoint": v=p.point/100; break;
-    case "standardPip": v=p.pip; break;
-    case "miniPip": v=p.pip/10; break;
-    case "microPip": v=p.pip/100; break;
-  }
+  const p=pairs[name]; if(!p){document.getElementById('lotResult').style.display='none';return;}
+  const comm=Number(p.commission||0); let v=0;
+  switch(lotType){case"standardPoint":v=p.point;break;case"miniPoint":v=p.point/10;break;case"microPoint":v=p.point/100;break;case"standardPip":v=p.pip;break;case"miniPip":v=p.pip/10;break;case"microPip":v=p.pip/100;break;}
   const lot=risk/(sl*v+comm);
-  const amt=lot*sl*v, comAmt=lot*comm, total=amt+comAmt;
+  const amt=lot*sl*v; const comAmt=lot*comm; const total=amt+comAmt;
   const el=document.getElementById('lotResult');
-  el.innerHTML=`<span style="font-size:19px;font-weight:700;">LotSize = ${lot.toFixed(2)}</span>
-  <span style="font-size:14px;margin-left:6px;">(Amt=${amt.toFixed(2)}, Com=${comAmt.toFixed(2)}, Total=${total.toFixed(2)})</span>`;
+  el.innerHTML=`<span style="font-size:19px;font-weight:700;">LotSize=${lot.toFixed(2)}</span>
+  <span style="font-size:14px;margin-left:6px;">(Amt=${amt.toFixed(2)},Com=${comAmt.toFixed(2)},Total=${total.toFixed(2)})</span>`;
   el.style.display='inline-block';
 }
 function clearCalc(){document.getElementById('risk').value='';document.getElementById('sl').value='';document.getElementById('lotResult').style.display='none';}
 
-// ===================== Modal & Local / Cloud =====================
-function openModal(){
-  document.getElementById('modal').style.display='flex';
-  document.getElementById('stepUnlock').style.display='block';
-  document.getElementById('editor').style.display='none';
-  document.getElementById('unlockErr').innerText='';
-  document.getElementById('modalAppPw').value='';
-}
+// ===================== Modal / Add / Edit / Delete =====================
+function openModal(){document.getElementById('modal').style.display='flex';document.getElementById('stepUnlock').style.display='block';document.getElementById('editor').style.display='none';}
+function closeModal(){document.getElementById('modal').style.display='none';document.getElementById('deArea').style.display='none';document.getElementById('syncArea').style.display='none';}
+function unlockModal(){if(document.getElementById('modalAppPw').value!==APP_PASSWORD){document.getElementById('unlockErr').innerText='Wrong password';return;}document.getElementById('stepUnlock').style.display='none';document.getElementById('editor').style.display='block';document.getElementById('unlockErr').innerText='';}
 
-function closeModal(){document.getElementById('modal').style.display='none';closeSyncArea();closeDeleteEdit();}
-
-function unlockModal(){
-  const v=(document.getElementById('modalAppPw').value||'').trim();
-  const stored=localStorage.getItem(LOCAL_KEY+"_pw")||APP_PASSWORD;
-  if(v===stored){
-    document.getElementById('stepUnlock').style.display='none';
-    document.getElementById('editor').style.display='block';
-    const sel=document.getElementById('pairSelect').value;
-    if(pairs[sel]){
-      document.getElementById('editName').value=sel;
-      document.getElementById('editPoint').value=pairs[sel].point;
-      document.getElementById('editPip').value=pairs[sel].pip;
-      document.getElementById('editCommission').value=pairs[sel].commission;
-    } else {
-      document.getElementById('editName').value='';document.getElementById('editPoint').value='';document.getElementById('editPip').value='';document.getElementById('editCommission').value='';
-    }
-  } else document.getElementById('unlockErr').innerText="Wrong app password.";
-}
-
-// ===================== Save / Sync / Delete =====================
 function saveLocalPair(){
-  const name=(document.getElementById('editName').value||'').toUpperCase().trim();
+  const name=document.getElementById('editName').value.trim().toUpperCase();
   const point=parseFloat(document.getElementById('editPoint').value);
   const pip=parseFloat(document.getElementById('editPip').value);
   const commission=parseFloat(document.getElementById('editCommission').value);
-  if(!name||isNaN(point)||isNaN(pip)||isNaN(commission)){alert("Enter valid name, point, pip and commission.");return;}
-  const existing=pairs[name];
-  const type=existing&&existing.type==='cloud'?'cloud':'local';
-  pairs[name]={point,pip,commission,type};
-  saveLocalPairs();populateDropdown();
-  alert(name+" saved locally.");
+  if(!name||isNaN(point)||isNaN(pip)||isNaN(commission)){alert('Invalid data');return;}
+  if(!pairs[name])pairs[name]={};pairs[name].point=point;pairs[name].pip=pip;pairs[name].commission=commission;pairs[name].type="local";
+  if(!pairs[name].order)pairs[name].order=Object.keys(pairs).length-1;
+  saveLocalPairs();populateDropdown();alert('Saved');
 }
 
-// ===================== Cloud Sync =====================
-let cloudUnlocked=false;
-function openSyncArea(){
-  cloudUnlocked=false;
-  document.getElementById('syncArea').style.display='block';
-  document.getElementById('cloudPw').value='';
-  document.getElementById('syncListWrap').style.display='none';
-  populateLocalSyncList();
-}
-function closeSyncArea(){document.getElementById('syncArea').style.display='none';document.getElementById('syncList').innerHTML='';document.getElementById('syncListWrap').style.display='none';cloudUnlocked=false;}
-function populateLocalSyncList(){
-  const wrap=document.getElementById('syncList');if(!wrap)return;wrap.innerHTML='';
-  Object.keys(pairs).sort().forEach(name=>{
-    if(pairs[name].type!=='local') return;
-    const div=document.createElement('div');div.className='pair-item';
-    div.innerHTML=`<span>${name}</span><input type="checkbox" data-name="${name}">`;
-    wrap.appendChild(div);
-  });
-}
-function unlockCloudForSync(){
-  const pw=document.getElementById('cloudPw').value.trim();
-  if(pw===CLOUD_PASSWORD){
-    cloudUnlocked=true;
-    document.getElementById('syncListWrap').style.display='block';
-  } else {alert("Wrong cloud password.");}
-}
-function pushSelectedToCloud(){
-  if(!cloudUnlocked) {alert("Unlock cloud first."); return;}
-  const checkboxes=document.querySelectorAll('#syncList input[type=checkbox]:checked');
-  checkboxes.forEach(cb=>{
-    const name=cb.dataset.name;
-    const data=pairs[name];
-    db.collection(FIRE_COLLECTION).doc(name).set({
-      point:data.point,
-      pip:data.pip,
-      commission:data.commission
-    });
-    pairs[name].type='cloud';
-  });
-  saveLocalPairs();populateDropdown();
-  alert("Selected pairs pushed to cloud.");
-}
-
-// ===================== Delete / Edit =====================
 function openDeleteEdit(){
-  const wrap=document.getElementById('deList');wrap.innerHTML='';
-  Object.keys(pairs).sort().forEach(name=>{
-    const div=document.createElement('div');div.className='pair-item';
-    const btns=document.createElement('div');
-    const del=document.createElement('button');del.className='small-btn';del.textContent='Delete';del.onclick=()=>{if(confirm("Delete "+name+"?")){delete pairs[name];saveLocalPairs();populateDropdown();openDeleteEdit();}};
-    const up=document.createElement('button');up.className='small-btn';up.textContent='↑';up.onclick=()=>{moveUp(name);openDeleteEdit();};
-    const down=document.createElement('button');down.className='small-btn';down.textContent='↓';down.onclick=()=>{moveDown(name);openDeleteEdit();};
-    btns.appendChild(del);btns.appendChild(up);btns.appendChild(down);
-    div.innerHTML=`<span>${name} (${pairs[name].type==='cloud'?'C':'L'})</span>`;
-    div.appendChild(btns);
+  const wrap=document.getElementById('deList'); if(!wrap) return;
+  wrap.innerHTML='';
+  const keys=Object.keys(pairs).sort((a,b)=>pairs[a].order-b.order);
+  keys.forEach(name=>{
+    const p=pairs[name];
+    const div=document.createElement('div'); div.className='pair-item';
+    div.innerHTML=`<span>${name} (${p.type==='cloud'?'C':'L'})</span>
+      <div style="display:flex;gap:4px">
+        <button class="small-btn" onclick="deletePair('${name}')">Del</button>
+        <button class="small-btn" onclick="movePair('${name}',-1)">↑</button>
+        <button class="small-btn" onclick="movePair('${name}',1)">↓</button>
+      </div>`;
     wrap.appendChild(div);
   });
   document.getElementById('deArea').style.display='block';
 }
+
+function deletePair(name){delete pairs[name];saveLocalPairs();openDeleteEdit();populateDropdown();}
+function movePair(name,dir){
+  const keys=Object.keys(pairs).sort((a,b)=>pairs[a].order-b.order);
+  const idx=keys.indexOf(name); if(idx<0) return;
+  const newIdx=idx+dir; if(newIdx<0||newIdx>=keys.length)return;
+  const temp=pairs[keys[idx]].order;pairs[keys[idx]].order=pairs[keys[newIdx]].order;pairs[keys[newIdx]].order=temp;
+  saveLocalPairs();openDeleteEdit();populateDropdown();
+}
+
 function closeDeleteEdit(){document.getElementById('deArea').style.display='none';}
-function moveUp(name){
-  if(!pairs[name]) return;
-  if(!pairs[name].order) pairs[name].order=0;
-  pairs[name].order -= 1;
-  normalizeOrders();
-  saveLocalPairs();
-  populateDropdown();
-  openDeleteEdit(); // Re-render modal immediately
-}
+function openSyncArea(){document.getElementById('syncArea').style.display='block';document.getElementById('syncListWrap').style.display='none';}
+function closeSyncArea(){document.getElementById('syncArea').style.display='none';}
+function unlockCloudForSync(){if(document.getElementById('cloudPw').value!==CLOUD_PASSWORD){alert('Wrong cloud password');return;}document.getElementById('syncListWrap').style.display='block';populateSyncList();}
+function populateSyncList(){const wrap=document.getElementById('syncList');wrap.innerHTML='';Object.keys(pairs).forEach(name=>{const p=pairs[name];if(p.type==='local'){const div=document.createElement('div');div.className='pair-item';div.innerHTML=`<input type="checkbox" id="ck_${name}"> <label for="ck_${name}">${name}</label>`;wrap.appendChild(div);}});}
+async function pushSelectedToCloud(){const wrap=document.getElementById('syncList');const checked=wrap.querySelectorAll('input:checked');for(const ck of checked){const name=ck.id.replace('ck_','');const p=pairs[name];await db.collection(FIRE_COLLECTION).doc(name).set({point:p.point,pip:p.pip,commission:p.commission,order:p.order});p.type='cloud';}alert('Pushed');closeSyncArea();populateDropdown();}
 
-function moveDown(name){
-  if(!pairs[name]) return;
-  if(!pairs[name].order) pairs[name].order=0;
-  pairs[name].order += 1;
-  normalizeOrders();
-  saveLocalPairs();
-  populateDropdown();
-  openDeleteEdit(); // Re-render modal immediately
-}
-
-function normalizeOrders(){
-  const arr=Object.keys(pairs).map(k=>({k,order:pairs[k].order??0})).sort((a,b)=>a.order-b.order);
-  arr.forEach((o,i)=>pairs[o.k].order=i);
-}
-
-// ===================== Login / Signup / Logout =====================
-function login(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value;auth.signInWithEmailAndPassword(e,p).then(()=>{document.getElementById('authSection').style.display='none';document.getElementById('calcSection').style.display='block';loadLocalPairs();populateDropdown();startCloudListener();}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
-function signup(){document.getElementById('confirmPassword').style.display='block';document.getElementById('createBtn').style.display='inline-block';document.getElementById('signupBtn').style.display='none';}
-function create(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value,cp=document.getElementById('confirmPassword').value;if(p!==cp){document.getElementById('authMsg').innerText="Passwords do not match";return;}auth.createUserWithEmailAndPassword(e,p).then(()=>{document.getElementById('authMsg').innerText="User created. Login now.";document.getElementById('confirmPassword').style.display='none';document.getElementById('createBtn').style.display='none';document.getElementById('signupBtn').style.display='inline-block';}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
-function logout(){auth.signOut();document.getElementById('calcSection').style.display='none';document.getElementById('authSection').style.display='block';document.getElementById('authMsg').innerText='';}
-
-// ===================== Reload Cloud =====================
-function reloadCloud(){startCloudListener();}
- 
-// ===================== Event Listeners =====================
-document.getElementById('loginBtn').onclick=login;
-document.getElementById('signupBtn').onclick=signup;
-document.getElementById('createBtn').onclick=create;
-document.getElementById('logoutBtn').onclick=logout;
-
+function logout(){auth.signOut();location.reload();}
+function reloadCloud(){startCloudListener();alert('Cloud reloaded');}
 </script>
 </body>
 </html>
