@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>₹@ⓖ$ 𝕱✗1111 — Final</title>
+<title>₹@ⓖ$ 𝕱✗222 — Final</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -266,11 +266,62 @@ function logout(){
   showMsg("Logged out");
 }
 </script>
-<!-- Part 3: Cloud Sync & Modal Editor -->
+<!-- =========================== Part 3: Calculator & Cloud Functions =========================== -->
 <script>
-// ===================== Cloud Sync =====================
-let unsubscribeSnapshot = null;
+// ===================== Global Vars =====================
+const APP_PASSWORD="6565";
+const CLOUD_PASSWORD="123456";
+const LOCAL_KEY="fx_pairs_v_final";
+const FIRE_COLLECTION="cloudPairs";
+let pairs={};
 
+// ===================== Preloaded / Local Pairs =====================
+const defaultPairs = {
+  // Add default pairs if needed, e.g.
+  "EURUSD": {point:10,pip:1,commission:2,type:"local"},
+  "GBPUSD": {point:8,pip:0.8,commission:1.5,type:"local"}
+};
+
+function loadLocalPairs(){
+  try{
+    const raw = localStorage.getItem(LOCAL_KEY);
+    const saved = raw ? JSON.parse(raw) : {};
+    pairs = JSON.parse(JSON.stringify(defaultPairs));
+    Object.keys(saved).forEach(k=>pairs[k]=saved[k]);
+  }catch(e){pairs=JSON.parse(JSON.stringify(defaultPairs));}
+}
+
+function saveLocalPairs(){
+  try{localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs));}catch(e){console.warn("saveLocalPairs", e);}
+}
+
+function populateDropdown(){
+  const sel = document.getElementById('pairSelect');
+  if(!sel) return;
+  sel.innerHTML='';
+  const list = Object.keys(pairs).map(name=>({
+    name,
+    order: typeof pairs[name].order==='number'?pairs[name].order:null
+  }));
+  list.sort((a,b)=>{
+    if(a.order!==null && b.order!==null) return a.order-b.order;
+    if(a.order!==null) return -1;
+    if(b.order!==null) return 1;
+    return a.name.localeCompare(b.name);
+  });
+  list.forEach(({name})=>{
+    const opt = document.createElement('option');
+    opt.value=name;
+    opt.text=pairs[name].type==="cloud"?`${name} (C)`:`${name} (L)`;
+    sel.appendChild(opt);
+  });
+}
+
+loadLocalPairs();
+populateDropdown();
+
+// ===================== Cloud Listener =====================
+let unsubscribeSnapshot = null;
 function startCloudListener(){
   try{
     if(unsubscribeSnapshot) unsubscribeSnapshot();
@@ -280,42 +331,68 @@ function startCloudListener(){
         const data = doc.data();
         const local = pairs[name];
         pairs[name] = {
-          point: data.point ?? (local ? local.point : 0),
-          pip: data.pip ?? (local ? local.pip : 0),
-          commission: (local && local.commission !== undefined) ? local.commission : (data.commission ?? 0),
-          type: "cloud",
-          order: typeof data.order === 'number' ? data.order : (local && typeof local.order === 'number' ? local.order : null)
+          point: data.point ?? (local?local.point:0),
+          pip: data.pip ?? (local?local.pip:0),
+          commission: (local && local.commission!==undefined)?local.commission:(data.commission??0),
+          order: typeof data.order==='number'?data.order:(local && typeof local.order==='number'?local.order:null),
+          type:"cloud"
         };
       });
+      // Remove deleted cloud pairs
       const cloudIds = new Set(snapshot.docs.map(d=>d.id));
       Object.keys(pairs).forEach(k=>{
-        if(pairs[k].type === 'cloud' && !cloudIds.has(k)){
-          if(defaultPairs[k]) pairs[k] = JSON.parse(JSON.stringify(defaultPairs[k]));
+        if(pairs[k].type==="cloud" && !cloudIds.has(k)){
+          if(defaultPairs[k]) pairs[k]=JSON.parse(JSON.stringify(defaultPairs[k]));
           else delete pairs[k];
         }
       });
       saveLocalPairs();
       populateDropdown();
-    }, err=>{ console.warn("cloud listener error:", err); });
-  } catch(e){ console.warn("startCloudListener failed:", e); }
+    }, err=>console.warn("cloud onSnapshot error:", err));
+  }catch(e){console.warn("startCloudListener failed:", e);}
+}
+startCloudListener();
+
+// ===================== Calculator Functions =====================
+function calculateLot(){
+  const name = document.getElementById('pairSelect').value;
+  const lotType = document.getElementById('lotType').value;
+  const risk = parseFloat(document.getElementById('risk').value);
+  const sl = parseFloat(document.getElementById('sl').value);
+  if(!name || isNaN(risk) || isNaN(sl) || risk<=0 || sl<=0){document.getElementById('lotResult').style.display='none';return;}
+  const p = pairs[name];
+  if(!p){document.getElementById('lotResult').style.display='none';return;}
+  const comm = Number(p.commission||0);
+  let v=0;
+  switch(lotType){
+    case "standardPoint": v=p.point; break;
+    case "miniPoint": v=p.point/10; break;
+    case "microPoint": v=p.point/100; break;
+    case "standardPip": v=p.pip; break;
+    case "miniPip": v=p.pip/10; break;
+    case "microPip": v=p.pip/100; break;
+  }
+  const lot = risk / (sl*v + comm);
+  const amt = lot*sl*v;
+  const comAmt = lot*comm;
+  const total = amt + comAmt;
+  const el = document.getElementById('lotResult');
+  el.innerHTML=`<span style="font-size:19px;font-weight:700;">LotSize = ${lot.toFixed(2)}</span>
+    <span style="font-size:14px;margin-left:6px;">(Amt=${amt.toFixed(2)}, Com=${comAmt.toFixed(2)}, Total=${total.toFixed(2)})</span>`;
+  el.style.display='inline-block';
 }
 
-// Start listener after login
-auth.onAuthStateChanged(user=>{
-  if(user){
-    startCloudListener();
-  } else {
-    if(unsubscribeSnapshot) unsubscribeSnapshot();
-  }
-});
+function clearCalc(){
+  document.getElementById('risk').value=''; document.getElementById('sl').value=''; document.getElementById('lotResult').style.display='none';
+}
 
-// ===================== Modal Editor =====================
+// ===================== Modal & Editor =====================
 function openModal(){
   document.getElementById('modal').style.display='flex';
   document.getElementById('stepUnlock').style.display='block';
   document.getElementById('editor').style.display='none';
-  document.getElementById('unlockErr').innerText = '';
-  document.getElementById('modalAppPw').value = '';
+  document.getElementById('unlockErr').innerText='';
+  document.getElementById('modalAppPw').value='';
 }
 
 function closeModal(){
@@ -325,164 +402,150 @@ function closeModal(){
 }
 
 function unlockModal(){
-  const v = (document.getElementById('modalAppPw').value || '').trim();
-  const stored = localStorage.getItem(LOCAL_KEY + "_pw") || APP_PASSWORD;
-  if(v === stored){
+  const v=(document.getElementById('modalAppPw').value||'').trim();
+  const stored = localStorage.getItem(LOCAL_KEY+"_pw")||APP_PASSWORD;
+  if(v===stored){
     document.getElementById('stepUnlock').style.display='none';
     document.getElementById('editor').style.display='block';
     const sel = document.getElementById('pairSelect').value;
     if(pairs[sel]){
-      document.getElementById('editName').value = sel;
-      document.getElementById('editPoint').value = pairs[sel].point;
-      document.getElementById('editPip').value = pairs[sel].pip;
-      document.getElementById('editCommission').value = pairs[sel].commission;
-    } else {
-      document.getElementById('editName').value='';
-      document.getElementById('editPoint').value='';
-      document.getElementById('editPip').value='';
-      document.getElementById('editCommission').value='';
+      document.getElementById('editName').value=sel;
+      document.getElementById('editPoint').value=pairs[sel].point;
+      document.getElementById('editPip').value=pairs[sel].pip;
+      document.getElementById('editCommission').value=pairs[sel].commission;
+    }else{
+      document.getElementById('editName').value=''; document.getElementById('editPoint').value=''; document.getElementById('editPip').value=''; document.getElementById('editCommission').value='';
     }
-  } else {
-    document.getElementById('unlockErr').innerText = "Wrong app password.";
-  }
+  }else document.getElementById('unlockErr').innerText="Wrong app password.";
 }
 
-// Save local pair
 function saveLocalPair(){
-  const name = (document.getElementById('editName').value || '').toUpperCase().trim();
-  const point = parseFloat(document.getElementById('editPoint').value);
-  const pip = parseFloat(document.getElementById('editPip').value);
-  const commission = parseFloat(document.getElementById('editCommission').value);
-  if(!name || isNaN(point) || isNaN(pip) || isNaN(commission)){
-    alert("Enter valid name, point, pip and commission.");
-    return;
-  }
-  const existing = pairs[name];
-  const type = existing && existing.type === 'cloud' ? 'cloud' : 'local';
-  pairs[name] = { point, pip, commission, type };
+  const name=(document.getElementById('editName').value||'').toUpperCase().trim();
+  const point=parseFloat(document.getElementById('editPoint').value);
+  const pip=parseFloat(document.getElementById('editPip').value);
+  const commission=parseFloat(document.getElementById('editCommission').value);
+  if(!name||isNaN(point)||isNaN(pip)||isNaN(commission)){alert("Enter valid name, point, pip, commission.");return;}
+  const existing=pairs[name];
+  const type=existing&&existing.type==="cloud"?"cloud":"local";
+  pairs[name]={point,pip,commission,type};
   saveLocalPairs();
   populateDropdown();
-  alert(name + " saved locally.");
+  alert(name+" saved locally.");
 }
 
 // ===================== Sync Cloud =====================
-let cloudUnlocked = false;
-
+let cloudUnlocked=false;
 function openSyncArea(){
-  cloudUnlocked = false;
+  cloudUnlocked=false;
   document.getElementById('syncArea').style.display='block';
   document.getElementById('cloudPw').value='';
   document.getElementById('syncListWrap').style.display='none';
   populateLocalSyncList();
 }
 
-function closeSyncArea(){
-  document.getElementById('syncArea').style.display='none';
-  document.getElementById('syncList') && (document.getElementById('syncList').innerHTML='');
-  document.getElementById('syncListWrap').style.display='none';
-  cloudUnlocked = false;
-}
+function closeSyncArea(){document.getElementById('syncArea').style.display='none';document.getElementById('syncList')&&(document.getElementById('syncList').innerHTML='');document.getElementById('syncListWrap').style.display='none';cloudUnlocked=false;}
 
 function populateLocalSyncList(){
-  const wrap = document.getElementById('syncList'); if(!wrap) return;
-  wrap.innerHTML = '';
+  const wrap=document.getElementById('syncList'); if(!wrap) return; wrap.innerHTML='';
   Object.keys(pairs).sort().forEach(name=>{
-    if(pairs[name].type === 'local'){
-      const item = document.createElement('div'); item.className='pair-item';
-      const cb = document.createElement('input'); cb.type='checkbox'; cb.value = name;
-      const lbl = document.createElement('div'); lbl.innerText = name;
-      item.prepend(cb); item.appendChild(lbl);
-      wrap.appendChild(item);
+    if(pairs[name].type==='local'){
+      const item=document.createElement('div'); item.className='pair-item';
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.value=name;
+      const lbl=document.createElement('div'); lbl.innerText=name;
+      item.prepend(cb); item.appendChild(lbl); wrap.appendChild(item);
     }
   });
 }
 
 function unlockCloudForSync(){
-  const v = (document.getElementById('cloudPw').value || '').trim();
-  if(v !== CLOUD_PASSWORD){ alert("Wrong cloud password."); return; }
-  cloudUnlocked = true;
+  const v=(document.getElementById('cloudPw').value||'').trim();
+  if(v!==CLOUD_PASSWORD){alert("Wrong cloud password."); return;}
+  cloudUnlocked=true;
   document.getElementById('syncListWrap').style.display='block';
 }
 
 async function pushSelectedToCloud(){
-  if(!cloudUnlocked){ alert("Unlock cloud first."); return; }
-  const checks = Array.from(document.querySelectorAll('#syncList input[type=checkbox]:checked')).map(i=>i.value);
-  if(checks.length === 0){ alert("Select pairs to sync."); return; }
+  if(!cloudUnlocked){alert("Unlock cloud first."); return;}
+  const checks=Array.from(document.querySelectorAll('#syncList input[type=checkbox]:checked')).map(i=>i.value);
+  if(checks.length===0){alert("Select pairs to sync."); return;}
   try{
     for(const name of checks){
-      const p = pairs[name];
-      await db.collection(FIRE_COLLECTION).doc(name).set({ point:p.point, pip:p.pip, commission:p.commission });
-      pairs[name].type = 'cloud';
+      const p=pairs[name];
+      await db.collection(FIRE_COLLECTION).doc(name).set({point:p.point,pip:p.pip,commission:p.commission});
+      pairs[name].type='cloud';
     }
     saveLocalPairs();
     populateDropdown();
-    alert("Synced to cloud: " + checks.join(", "));
+    alert("Synced to cloud: "+checks.join(", "));
     closeSyncArea();
-  } catch(e){ alert("Sync failed: " + (e.message||e)); }
+  }catch(e){alert("Sync failed: "+(e.message||e));}
 }
 
-// ===================== Delete / Edit =====================
+// ===================== Delete / Edit List =====================
 function openDeleteEdit(){
-  const wrap = document.getElementById('deList');
-  if(!wrap) return;
-  wrap.innerHTML = '';
-  Object.keys(pairs).sort().forEach(name=>{
-    const p = pairs[name];
-    const item = document.createElement('div'); item.className='pair-item';
-    const left = document.createElement('div'); left.innerText = name + ' (' + (p.type==='cloud'?'C':'L') + ')';
-    const right = document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
+  const wrap=document.getElementById('deList'); if(!wrap) return; wrap.innerHTML='';
+  const list=Object.keys(pairs).map(name=>({name,order:typeof pairs[name].order==='number'?pairs[name].order:null}));
+  list.sort((a,b)=>{
+    if(a.order!==null && b.order!==null) return a.order-b.order;
+    if(a.order!==null) return -1;
+    if(b.order!==null) return 1;
+    return a.name.localeCompare(b.name);
+  });
+  list.forEach(({name})=>{
+    const p=pairs[name];
+    const item=document.createElement('div'); item.className='pair-item';
+    const left=document.createElement('div'); left.innerText=name+' ('+(p.type==='cloud'?'C':'L')+')';
+    const right=document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
 
-    const topBtn = document.createElement('button'); topBtn.className='small-btn'; topBtn.innerText='↑ Top';
-    topBtn.onclick = ()=>movePair(name,'top');
-    const bottomBtn = document.createElement('button'); bottomBtn.className='small-btn'; bottomBtn.innerText='↓ Bottom';
-    bottomBtn.onclick = ()=>movePair(name,'bottom');
-    const editBtn = document.createElement('button'); editBtn.className='small-btn'; editBtn.innerText='Edit';
-    editBtn.onclick = ()=>editFromList(name);
-    const delBtn = document.createElement('button'); delBtn.className='small-btn'; delBtn.innerText='Delete';
-    delBtn.onclick = ()=>deleteFromList(name);
+    const topBtn=document.createElement('button'); topBtn.className='small-btn'; topBtn.innerText='↑ Top'; topBtn.onclick=()=>movePair(name,'top');
+    const bottomBtn=document.createElement('button'); bottomBtn.className='small-btn'; bottomBtn.innerText='↓ Bottom'; bottomBtn.onclick=()=>movePair(name,'bottom');
+    const editBtn=document.createElement('button'); editBtn.className='small-btn'; editBtn.innerText='Edit'; editBtn.onclick=()=>editFromList(name);
+    const delBtn=document.createElement('button'); delBtn.className='small-btn'; delBtn.innerText='Delete'; delBtn.onclick=()=>deleteFromList(name);
 
-    right.append(topBtn,bottomBtn,editBtn,delBtn);
-    item.append(left,right);
-    wrap.appendChild(item);
+    right.append(topBtn,bottomBtn,editBtn,delBtn); item.append(left,right); wrap.appendChild(item);
   });
   document.getElementById('deArea').style.display='block';
 }
 
-function closeDeleteEdit(){ document.getElementById('deArea') && (document.getElementById('deArea').style.display='none'); }
-
-function movePair(name, where){
-  const orders = Object.values(pairs).map(p=>p.order).filter(o=>typeof o==='number');
-  const min = orders.length ? Math.min(...orders) : 0;
-  const max = orders.length ? Math.max(...orders) : 0;
-  if(where==='top') pairs[name].order = min-1;
-  if(where==='bottom') pairs[name].order = max+1;
-  saveLocalPairs();
-  populateDropdown();
-  openDeleteEdit();
+function movePair(name,where){
+  const orders=Object.values(pairs).map(p=>p.order).filter(o=>typeof o==='number');
+  const min=orders.length?Math.min(...orders):0;
+  const max=orders.length?Math.max(...orders):0;
+  if(where==='top') pairs[name].order=min-1;
+  if(where==='bottom') pairs[name].order=max+1;
+  saveLocalPairs(); populateDropdown(); openDeleteEdit();
   if(pairs[name].type==='cloud'){
     db.collection(FIRE_COLLECTION).doc(name).update({order:pairs[name].order}).catch(()=>{});
   }
 }
 
+function closeDeleteEdit(){document.getElementById('deArea')&&(document.getElementById('deArea').style.display='none');}
+
 function editFromList(name){
-  const p = pairs[name]; if(!p) return;
+  const p=pairs[name]; if(!p) return;
   if(p.type==='cloud'){
-    const pw = prompt("Enter cloud password to edit cloud pair:");
-    if(pw !== CLOUD_PASSWORD){ alert("Wrong cloud password."); return; }
+    const pw=prompt("Enter cloud password to edit this cloud pair:");
+    if(pw!==CLOUD_PASSWORD){alert("Wrong cloud password."); return;}
+    document.getElementById('editName').value=name;
+    document.getElementById('editPoint').value=p.point;
+    document.getElementById('editPip').value=p.pip;
+    document.getElementById('editCommission').value=p.commission;
+    alert("Edit values and click Save Local. To update cloud, use Sync Cloud.");
+  }else{
+    document.getElementById('editName').value=name;
+    document.getElementById('editPoint').value=p.point;
+    document.getElementById('editPip').value=p.pip;
+    document.getElementById('editCommission').value=p.commission;
+    alert("Edit values and click Save Local.");
   }
-  document.getElementById('editName').value = name;
-  document.getElementById('editPoint').value = p.point;
-  document.getElementById('editPip').value = p.pip;
-  document.getElementById('editCommission').value = p.commission;
-  alert("Edit values and click Save Local. Use Sync Cloud for cloud update.");
 }
 
 async function deleteFromList(name){
-  const p = pairs[name]; if(!p) return;
+  const p=pairs[name]; if(!p) return;
   if(p.type==='cloud'){
-    const pw = prompt("Enter cloud password to delete cloud pair:");
-    if(pw !== CLOUD_PASSWORD){ alert("Wrong cloud password."); return; }
-    try{ await db.collection(FIRE_COLLECTION).doc(name).delete(); }catch(e){ console.warn(e); }
+    const pw=prompt("Enter cloud password to delete this cloud pair:");
+    if(pw!==CLOUD_PASSWORD){alert("Wrong cloud password."); return;}
+    try{await db.collection(FIRE_COLLECTION).doc(name).delete();}catch(e){console.warn("cloud delete may fail:", e);}
   }
   delete pairs[name];
   saveLocalPairs();
@@ -490,19 +553,22 @@ async function deleteFromList(name){
   openDeleteEdit();
 }
 
-// ===================== Manual Cloud Reload =====================
+// ===================== Reload Cloud =====================
 async function reloadCloud(){
-  try{ await db.collection(FIRE_COLLECTION).get(); alert("Cloud fetch requested — latest data will appear shortly."); }
-  catch(e){ alert("Cloud reload failed: " + (e.message||e)); }
+  try{await db.collection(FIRE_COLLECTION).get(); alert("Cloud fetch requested — latest data will appear shortly.");}
+  catch(e){alert("Cloud reload failed: "+(e.message||e));}
 }
 
-// ===================== Init DOM =====================
+// ===================== Logout =====================
+function logout(){
+  auth.signOut();
+  document.getElementById('calcSection').style.display='none';
+  document.getElementById('authSection').style.display='block';
+  showMsg("Logged out");
+}
+
+// ===================== Init =====================
 document.addEventListener('DOMContentLoaded', ()=>{
   populateDropdown();
-  if(localStorage.getItem('fx_unlocked')==='1'){
-    document.getElementById('logoutBtn') && (document.getElementById('logoutBtn').style.display='inline-block');
-  } else {
-    document.getElementById('logoutBtn') && (document.getElementById('logoutBtn').style.display='none');
-  }
 });
 </script>
