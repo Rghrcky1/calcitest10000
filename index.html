@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Forex Lot Calculator — Full</title>
+<title>₹@ⓖ$ 𝕱✗ — Final</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -40,7 +40,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>Forex Lot Calculator</h1>
+    <h1>₹@ⓖ$ 𝕱✗</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -123,6 +123,7 @@ button.secondary{background:#eee;color:#111}
       <div style="margin-top:8px">
         <button class="secondary" onclick="closeModal()">Close</button>
       </div>
+
       <!-- Sync area -->
       <div id="syncArea" style="display:none;margin-top:12px">
         <div class="small">Enter Cloud Password</div>
@@ -154,8 +155,9 @@ button.secondary{background:#eee;color:#111}
 </div>
 
 <script>
-// ===================== Firebase Projects =====================
-// Auth Project
+// ================== Firebase Projects ==================
+
+// Auth project
 const authApp = firebase.initializeApp({
   apiKey: "AIzaSyBf-D1KYMJ_b3_1Dog7AkJ8b0MST0fD_9g",
   authDomain: "auth-9bef7.firebaseapp.com",
@@ -167,7 +169,7 @@ const authApp = firebase.initializeApp({
 const auth = authApp.auth();
 const authDb = authApp.firestore();
 
-// Cloud Project
+// Cloud project
 const cloudApp = firebase.initializeApp({
   apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
   authDomain: "lotcalci.firebaseapp.com",
@@ -178,316 +180,378 @@ const cloudApp = firebase.initializeApp({
 }, "cloudApp");
 const db = cloudApp.firestore();
 
-// ===================== Global Vars =====================
-const APP_PASSWORD="6565";
-const CLOUD_PASSWORD="123456";
-const LOCAL_KEY="fx_pairs_v_final";
-const FIRE_COLLECTION="cloudPairs";
-let pairs={};
+// ================== Global Vars ==================
+const APP_PASSWORD = "6565";
+const CLOUD_PASSWORD = "123456";
+const LOCAL_KEY = "fx_pairs_v_final";
+const FIRE_COLLECTION = "cloudPairs";
+let pairs = {};
+// ================== Authentication ==================
+const emailEl = document.getElementById("email");
+const passwordEl = document.getElementById("password");
+const confirmEl = document.getElementById("confirmPassword");
+const loginBtn = document.getElementById("loginBtn");
+const signupBtn = document.getElementById("signupBtn");
+const createBtn = document.getElementById("createBtn");
+const forgotBtn = document.getElementById("forgotBtn");
+const authMsg = document.getElementById("authMsg");
 
-// ===================== Local Pairs =====================
-const defaultPairs = {
-  EURUSD: {point:10,pip:1,commission:2,type:'local'},
-  GBPUSD: {point:12,pip:1.2,commission:2.5,type:'local'}
-};
+const authSection = document.getElementById("authSection");
+const calcSection = document.getElementById("calcSection");
+const adminSection = document.getElementById("adminSection");
+const userListEl = document.getElementById("userList");
+
+loginBtn.addEventListener("click", async () => {
+    const email = emailEl.value.trim();
+    const pw = passwordEl.value;
+    if(!email || !pw){authMsg.innerText="Enter email & password";return;}
+    try {
+        const userCred = await auth.signInWithEmailAndPassword(email,pw);
+        const userDoc = await authDb.collection("users").doc(userCred.user.uid).get();
+        const data = userDoc.data();
+        if(!data.approved){
+            authMsg.innerText="Account not approved by admin";
+            auth.signOut();
+            return;
+        }
+        loadApp(userCred.user);
+    } catch(e){
+        authMsg.innerText=e.message;
+    }
+});
+
+signupBtn.addEventListener("click", () => {
+    confirmEl.style.display="block";
+    loginBtn.style.display="none";
+    signupBtn.style.display="none";
+    createBtn.style.display="block";
+});
+
+createBtn.addEventListener("click", async () => {
+    const email = emailEl.value.trim();
+    const pw = passwordEl.value;
+    const conf = confirmEl.value;
+    if(pw!==conf){authMsg.innerText="Passwords do not match";return;}
+    try {
+        const userCred = await auth.createUserWithEmailAndPassword(email,pw);
+        await authDb.collection("users").doc(userCred.user.uid).set({
+            email,emailApproved:false,approved:false,role:"user"
+        });
+        authMsg.innerText="Account created, wait admin approval";
+        confirmEl.style.display="none";
+        loginBtn.style.display="block";
+        signupBtn.style.display="block";
+        createBtn.style.display="none";
+    } catch(e){authMsg.innerText=e.message;}
+});
+
+forgotBtn.addEventListener("click", async () => {
+    const email = emailEl.value.trim();
+    if(!email){authMsg.innerText="Enter email to reset";return;}
+    try{
+        await auth.sendPasswordResetEmail(email);
+        authMsg.innerText="Password reset email sent";
+    }catch(e){authMsg.innerText=e.message;}
+});
+
+async function loadApp(user){
+    authSection.style.display="none";
+    calcSection.style.display="block";
+    const userDoc = await authDb.collection("users").doc(user.uid).get();
+    if(userDoc.data().role==="admin"){
+        adminSection.style.display="block";
+        loadAdminList();
+    }
+    loadLocalPairs();
+    populateDropdown();
+}
+
+// ================== Admin Dashboard ==================
+async function loadAdminList(){
+    const snapshot = await authDb.collection("users").get();
+    userListEl.innerHTML="";
+    snapshot.forEach(doc=>{
+        const data = doc.data();
+        if(data.approved) return;
+        const div = document.createElement("div");
+        div.className="pair-item";
+        div.innerHTML=`<span>${data.email}</span><div>
+            <button class="small-btn" onclick="approveUser('${doc.id}')">Approve</button>
+            <button class="small-btn" onclick="rejectUser('${doc.id}')">Reject</button>
+        </div>`;
+        userListEl.appendChild(div);
+    });
+}
+
+async function approveUser(uid){
+    await authDb.collection("users").doc(uid).update({approved:true});
+    loadAdminList();
+}
+async function rejectUser(uid){
+    await authDb.collection("users").doc(uid).delete();
+    loadAdminList();
+}
+
+// ================== Calculator Functions ==================
+const pairSelect = document.getElementById("pairSelect");
+const lotTypeEl = document.getElementById("lotType");
+const riskEl = document.getElementById("risk");
+const slEl = document.getElementById("sl");
+const lotResultEl = document.getElementById("lotResult");
 
 function loadLocalPairs(){
-  try {
-    const raw = localStorage.getItem(LOCAL_KEY);
-    const saved = raw ? JSON.parse(raw) : {};
-    pairs = JSON.parse(JSON.stringify(defaultPairs));
-    Object.keys(saved).forEach(k=>pairs[k]=saved[k]);
-  } catch(e){pairs=JSON.parse(JSON.stringify(defaultPairs));}
+    const stored = localStorage.getItem(LOCAL_KEY);
+    if(stored){pairs = JSON.parse(stored);}
 }
 
 function saveLocalPairs(){
-  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs)); }catch(e){console.warn(e);}
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs));
 }
 
 function populateDropdown(){
-  const sel = document.getElementById('pairSelect');
-  if(!sel) return;
-  sel.innerHTML='';
-  const list = Object.keys(pairs).map(name=>({name,order:pairs[name].order??null}));
-  list.sort((a,b)=>{
-    if(a.order!==null && b.order!==null) return a.order-b.order;
-    if(a.order!==null) return -1;
-    if(b.order!==null) return 1;
-    return a.name.localeCompare(b.name);
-  });
-  list.forEach(({name})=>{
-    const opt=document.createElement('option');
-    opt.value=name;
-    opt.text=pairs[name].type==='cloud'?`${name} (C)`:`${name} (L)`;
-    sel.appendChild(opt);
-  });
+    pairSelect.innerHTML="";
+    for(let key in pairs){
+        const opt = document.createElement("option");
+        opt.value=key;
+        opt.innerText=key;
+        pairSelect.appendChild(opt);
+    }
 }
 
-loadLocalPairs();
-populateDropdown();
-
-// ===================== Cloud Listener =====================
-let unsubscribeSnapshot=null;
-function startCloudListener(){
-  try{
-    if(unsubscribeSnapshot) unsubscribeSnapshot();
-    unsubscribeSnapshot = db.collection(FIRE_COLLECTION).onSnapshot(snapshot=>{
-      snapshot.forEach(doc=>{
-        const name = doc.id;
-        const data = doc.data();
-        const local = pairs[name];
-        pairs[name]={
-          point:data.point??local?.point??0,
-          pip:data.pip??local?.pip??0,
-          commission:data.commission??local?.commission??0,
-          order:data.order??local?.order??null,
-          type:'cloud'
-        };
-      });
-
-      const cloudIds = new Set(snapshot.docs.map(d=>d.id));
-      Object.keys(pairs).forEach(k=>{
-        if(pairs[k].type==='cloud' && !cloudIds.has(k)){
-          if(defaultPairs[k]){ pairs[k]=JSON.parse(JSON.stringify(defaultPairs[k])); }
-          else delete pairs[k];
-        }
-      });
-
-      saveLocalPairs();
-      populateDropdown();
-    },err=>console.warn("cloud onSnapshot error:",err));
-  }catch(e){console.warn("startCloudListener failed:",e);}
-}
-
-startCloudListener();
-
-// ===================== Calculator Functions =====================
 function calculateLot(){
-  const name = document.getElementById('pairSelect').value;
-  const lotType = document.getElementById('lotType').value;
-  const risk = parseFloat(document.getElementById('risk').value);
-  const sl = parseFloat(document.getElementById('sl').value);
-  if(!name || isNaN(risk) || isNaN(sl) || risk<=0 || sl<=0){document.getElementById('lotResult').style.display='none';return;}
-  const p = pairs[name];
-  if(!p){document.getElementById('lotResult').style.display='none';return;}
-  const comm = Number(p.commission||0);
-  let v=0;
-  switch(lotType){
-    case "standardPoint":v=p.point;break;
-    case "miniPoint":v=p.point/10;break;
-    case "microPoint":v=p.point/100;break;
-    case "standardPip":v=p.pip;break;
-    case "miniPip":v=p.pip/10;break;
-    case "microPip":v=p.pip/100;break;
-  }
-  const lot=risk/(sl*v+comm);
-  const amt=lot*sl*v;
-  const comAmt=lot*comm;
-  const total=amt+comAmt;
-  const el=document.getElementById('lotResult');
-  el.innerHTML=`<span style="font-size:19px;font-weight:700;">LotSize=${lot.toFixed(2)}</span>
-  <span style="font-size:14px;margin-left:6px;">(Amt=${amt.toFixed(2)}, Com=${comAmt.toFixed(2)}, Total=${total.toFixed(2)})</span>`;
-  el.style.display='inline-block';
+    const pair = pairSelect.value;
+    const type = lotTypeEl.value;
+    const risk = parseFloat(riskEl.value);
+    const sl = parseFloat(slEl.value);
+    if(!pair || !pairs[pair] || isNaN(risk) || isNaN(sl)){lotResultEl.style.display="none"; return;}
+    let val=0;
+    const data = pairs[pair];
+    switch(type){
+        case "standardPoint": val=data.point; break;
+        case "miniPoint": val=data.point/10; break;
+        case "microPoint": val=data.point/100; break;
+        case "standardPip": val=data.pip; break;
+        case "miniPip": val=data.pip/10; break;
+        case "microPip": val=data.pip/100; break;
+    }
+    const lot = (risk/(sl*val)).toFixed(2);
+    lotResultEl.innerText=`Lot size: ${lot}`;
+    lotResultEl.style.display="inline-block";
 }
 
-function clearCalc(){document.getElementById('risk').value='';document.getElementById('sl').value='';document.getElementById('lotResult').style.display='none';}
+function clearCalc(){
+    riskEl.value="";
+    slEl.value="";
+    lotResultEl.style.display="none";
+}
 
-// ===================== Modal Unlock & Local Save =====================
-function isUnlocked(){ return localStorage.getItem('fx_unlocked')==='1'; }
+// ================== Logout ==================
 function logout(){
-  auth.signOut();
-  document.getElementById('calcSection').style.display='none';
-  document.getElementById('authSection').style.display='block';
-  showMsg("Logged out");
+    auth.signOut();
+    authSection.style.display="block";
+    calcSection.style.display="none";
+    adminSection.style.display="none";
+    emailEl.value=""; passwordEl.value=""; confirmEl.value="";
 }
+// ================== Modal & Editor ==================
+const modal = document.getElementById("modal");
+const stepUnlock = document.getElementById("stepUnlock");
+const editor = document.getElementById("editor");
+const modalAppPw = document.getElementById("modalAppPw");
+const unlockErr = document.getElementById("unlockErr");
+const editName = document.getElementById("editName");
+const editPoint = document.getElementById("editPoint");
+const editPip = document.getElementById("editPip");
+const editCommission = document.getElementById("editCommission");
+const syncArea = document.getElementById("syncArea");
+const cloudPw = document.getElementById("cloudPw");
+const syncListWrap = document.getElementById("syncListWrap");
+const syncList = document.getElementById("syncList");
+const deArea = document.getElementById("deArea");
+const deList = document.getElementById("deList");
+
+let cloudUnlocked = false;
 
 function openModal(){
-  document.getElementById('modal').style.display='flex';
-  document.getElementById('stepUnlock').style.display='block';
-  document.getElementById('editor').style.display='none';
-  document.getElementById('unlockErr').innerText='';
-  document.getElementById('modalAppPw').value='';
-  try{db.collection(FIRE_COLLECTION).get().then(()=>populateDropdown()).catch(()=>{});}catch(e){}
+    modal.style.display="flex";
+    stepUnlock.style.display="block";
+    editor.style.display="none";
+    unlockErr.innerText="";
+    modalAppPw.value="";
+    populateDropdown();
 }
-function closeModal(){document.getElementById('modal').style.display='none';closeSyncArea();closeDeleteEdit();}
+
+function closeModal(){
+    modal.style.display="none";
+    closeSyncArea();
+    closeDeleteEdit();
+}
 
 function unlockModal(){
-  const v=(document.getElementById('modalAppPw').value||'').trim();
-  const stored = localStorage.getItem(LOCAL_KEY+"_pw")||APP_PASSWORD;
-  if(v===stored){
-    document.getElementById('stepUnlock').style.display='none';
-    document.getElementById('editor').style.display='block';
-    const sel=document.getElementById('pairSelect').value;
-    if(pairs[sel]){
-      document.getElementById('editName').value=sel;
-      document.getElementById('editPoint').value=pairs[sel].point;
-      document.getElementById('editPip').value=pairs[sel].pip;
-      document.getElementById('editCommission').value=pairs[sel].commission;
-    }else{
-      document.getElementById('editName').value='';document.getElementById('editPoint').value='';document.getElementById('editPip').value='';document.getElementById('editCommission').value='';
+    const pw = modalAppPw.value.trim();
+    if(pw===APP_PASSWORD){
+        stepUnlock.style.display="none";
+        editor.style.display="block";
+        const sel = pairSelect.value;
+        if(pairs[sel]){
+            editName.value = sel;
+            editPoint.value = pairs[sel].point;
+            editPip.value = pairs[sel].pip;
+            editCommission.value = pairs[sel].commission;
+        } else {
+            editName.value=""; editPoint.value=""; editPip.value=""; editCommission.value="";
+        }
+    } else {
+        unlockErr.innerText="Wrong app password.";
     }
-  } else document.getElementById('unlockErr').innerText="Wrong app password.";
 }
 
+// ================== Save Local Pair ==================
 function saveLocalPair(){
-  const name=(document.getElementById('editName').value||'').toUpperCase().trim();
-  const point=parseFloat(document.getElementById('editPoint').value);
-  const pip=parseFloat(document.getElementById('editPip').value);
-  const commission=parseFloat(document.getElementById('editCommission').value);
-  if(!name || isNaN(point)||isNaN(pip)||isNaN(commission)){alert("Enter valid values."); return;}
-  const existing = pairs[name];
-  const type = existing && existing.type==='cloud'?'cloud':'local';
-  pairs[name]={point,pip,commission,type};
-  saveLocalPairs();
-  populateDropdown();
-  alert(name+" saved locally.");
+    const name = editName.value.trim().toUpperCase();
+    const point = parseFloat(editPoint.value);
+    const pip = parseFloat(editPip.value);
+    const commission = parseFloat(editCommission.value);
+    if(!name || isNaN(point) || isNaN(pip) || isNaN(commission)){alert("Fill all fields");return;}
+    pairs[name]={point,pip,commission,type:"local"};
+    saveLocalPairs();
+    populateDropdown();
+    alert(name + " saved locally");
 }
-// ===================== Cloud Sync & Push =====================
-let cloudUnlocked=false;
 
+// ================== Cloud Sync ==================
 function openSyncArea(){
-  cloudUnlocked=false;
-  document.getElementById('syncArea').style.display='block';
-  document.getElementById('cloudPw').value='';
-  document.getElementById('syncListWrap').style.display='none';
-  populateLocalSyncList();
+    cloudUnlocked=false;
+    syncArea.style.display="block";
+    cloudPw.value="";
+    syncListWrap.style.display="none";
+    populateLocalSyncList();
 }
 
 function closeSyncArea(){
-  document.getElementById('syncArea').style.display='none';
-  document.getElementById('syncList').innerHTML='';
-  document.getElementById('syncListWrap').style.display='none';
-  cloudUnlocked=false;
+    syncArea.style.display="none";
+    syncList.innerHTML="";
+    syncListWrap.style.display="none";
+    cloudUnlocked=false;
 }
 
 function populateLocalSyncList(){
-  const wrap=document.getElementById('syncList'); if(!wrap) return;
-  wrap.innerHTML='';
-  Object.keys(pairs).sort().forEach(name=>{
-    if(pairs[name].type==='local'){
-      const item=document.createElement('div'); item.className='pair-item';
-      const cb=document.createElement('input'); cb.type='checkbox'; cb.value=name;
-      const lbl=document.createElement('div'); lbl.innerText=name;
-      item.prepend(cb); item.appendChild(lbl); wrap.appendChild(item);
-    }
-  });
+    syncList.innerHTML="";
+    Object.keys(pairs).forEach(name=>{
+        if(pairs[name].type==="local"){
+            const item = document.createElement("div"); item.className="pair-item";
+            const cb = document.createElement("input"); cb.type="checkbox"; cb.value=name;
+            const lbl = document.createElement("div"); lbl.innerText=name;
+            item.appendChild(cb); item.appendChild(lbl);
+            syncList.appendChild(item);
+        }
+    });
 }
 
 function unlockCloudForSync(){
-  const v=(document.getElementById('cloudPw').value||'').trim();
-  if(v!==CLOUD_PASSWORD){alert("Wrong cloud password."); return;}
-  cloudUnlocked=true;
-  document.getElementById('syncListWrap').style.display='block';
+    if(cloudPw.value.trim()===CLOUD_PASSWORD){
+        cloudUnlocked=true;
+        syncListWrap.style.display="block";
+    } else {
+        alert("Wrong cloud password");
+    }
 }
 
 async function pushSelectedToCloud(){
-  if(!cloudUnlocked){alert("Unlock cloud first."); return;}
-  const checks=Array.from(document.querySelectorAll('#syncList input[type=checkbox]:checked')).map(i=>i.value);
-  if(checks.length===0){alert("Select pairs to sync."); return;}
-  try{
-    for(const name of checks){
-      const p=pairs[name];
-      await db.collection(FIRE_COLLECTION).doc(name).set({point:p.point,pip:p.pip,commission:p.commission});
-      pairs[name].type='cloud';
-    }
+    if(!cloudUnlocked){alert("Unlock cloud first"); return;}
+    const checks = Array.from(syncList.querySelectorAll("input[type=checkbox]:checked")).map(cb=>cb.value);
+    if(checks.length===0){alert("Select pairs to sync"); return;}
+    try{
+        for(const name of checks){
+            const p = pairs[name];
+            await db.collection(FIRE_COLLECTION).doc(name).set({point:p.point,pip:p.pip,commission:p.commission});
+            pairs[name].type="cloud";
+        }
+        saveLocalPairs();
+        populateDropdown();
+        alert("Synced: "+checks.join(", "));
+        closeSyncArea();
+    }catch(e){alert("Sync failed: "+e.message);}
+}
+
+// ================== Delete/Edit ==================
+function openDeleteEdit(){
+    deList.innerHTML="";
+    Object.keys(pairs).forEach(name=>{
+        const p = pairs[name];
+        const item = document.createElement("div"); item.className="pair-item";
+        const left = document.createElement("div"); left.innerText=name + " (" + (p.type==="cloud"?"C":"L") + ")";
+        const right = document.createElement("div"); right.style.display="flex"; right.style.gap="6px";
+
+        const topBtn = document.createElement("button"); topBtn.className="small-btn"; topBtn.innerText="↑ Top"; topBtn.onclick=()=>movePair(name,"top");
+        const bottomBtn = document.createElement("button"); bottomBtn.className="small-btn"; bottomBtn.innerText="↓ Bottom"; bottomBtn.onclick=()=>movePair(name,"bottom");
+        const editBtn = document.createElement("button"); editBtn.className="small-btn"; editBtn.innerText="Edit"; editBtn.onclick=()=>editFromList(name);
+        const delBtn = document.createElement("button"); delBtn.className="small-btn"; delBtn.innerText="Delete"; delBtn.onclick=()=>deleteFromList(name);
+
+        right.append(topBtn,bottomBtn,editBtn,delBtn);
+        item.append(left,right);
+        deList.appendChild(item);
+    });
+    deArea.style.display="block";
+}
+
+function closeDeleteEdit(){deArea.style.display="none";}
+
+function movePair(name, where){
+    const orders = Object.values(pairs).map(p=>p.order).filter(o=>typeof o==="number");
+    const min = orders.length?Math.min(...orders):0;
+    const max = orders.length?Math.max(...orders):0;
+    if(where==="top") pairs[name].order=min-1;
+    if(where==="bottom") pairs[name].order=max+1;
     saveLocalPairs();
     populateDropdown();
-    alert("Synced to cloud: "+checks.join(", "));
-    closeSyncArea();
-  }catch(e){alert("Sync failed: "+(e.message||e));}
+    openDeleteEdit();
+    if(pairs[name].type==="cloud"){
+        db.collection(FIRE_COLLECTION).doc(name).update({order:pairs[name].order}).catch(()=>{});
+    }
 }
-
-// ===================== Delete / Edit =====================
-function openDeleteEdit(){
-  const wrap=document.getElementById('deList'); if(!wrap) return;
-  wrap.innerHTML='';
-  const list=Object.keys(pairs).map(name=>({name,order:pairs[name].order??null}));
-  list.sort((a,b)=>{
-    if(a.order!==null && b.order!==null) return a.order-b.order;
-    if(a.order!==null) return -1;
-    if(b.order!==null) return 1;
-    return a.name.localeCompare(b.name);
-  });
-  list.forEach(({name})=>{
-    const p=pairs[name];
-    const item=document.createElement('div'); item.className='pair-item';
-    const left=document.createElement('div'); left.innerText=name+' ('+(p.type==='cloud'?'C':'L')+')';
-    const right=document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
-
-    const topBtn=document.createElement('button'); topBtn.className='small-btn'; topBtn.innerText='↑ Top'; topBtn.onclick=()=>movePair(name,'top');
-    const bottomBtn=document.createElement('button'); bottomBtn.className='small-btn'; bottomBtn.innerText='↓ Bottom'; bottomBtn.onclick=()=>movePair(name,'bottom');
-    const editBtn=document.createElement('button'); editBtn.className='small-btn'; editBtn.innerText='Edit'; editBtn.onclick=()=>editFromList(name);
-    const delBtn=document.createElement('button'); delBtn.className='small-btn'; delBtn.innerText='Delete'; delBtn.onclick=()=>deleteFromList(name);
-
-    right.append(topBtn,bottomBtn,editBtn,delBtn);
-    item.append(left,right); wrap.appendChild(item);
-  });
-  document.getElementById('deArea').style.display='block';
-}
-
-function movePair(name,where){
-  const orders=Object.values(pairs).map(p=>p.order).filter(o=>typeof o==='number');
-  const min=orders.length?Math.min(...orders):0;
-  const max=orders.length?Math.max(...orders):0;
-  if(where==='top') pairs[name].order=min-1;
-  if(where==='bottom') pairs[name].order=max+1;
-  saveLocalPairs();
-  populateDropdown();
-  openDeleteEdit();
-  if(pairs[name].type==='cloud'){
-    db.collection(FIRE_COLLECTION).doc(name).update({order:pairs[name].order}).catch(()=>{});
-  }
-}
-
-function closeDeleteEdit(){document.getElementById('deArea').style.display='none';}
 
 function editFromList(name){
-  const p=pairs[name]; if(!p) return;
-  if(p.type==='cloud'){
-    const pw=prompt("Enter cloud password to edit cloud pair:");
-    if(pw!==CLOUD_PASSWORD){alert("Wrong cloud password."); return;}
-    document.getElementById('editName').value=name;
-    document.getElementById('editPoint').value=p.point;
-    document.getElementById('editPip').value=p.pip;
-    document.getElementById('editCommission').value=p.commission;
-    alert("Edit values and Save Local. Use Sync Cloud to update cloud.");
-  } else {
-    document.getElementById('editName').value=name;
-    document.getElementById('editPoint').value=p.point;
-    document.getElementById('editPip').value=p.pip;
-    document.getElementById('editCommission').value=p.commission;
-    alert("Edit values and Save Local.");
-  }
+    const p = pairs[name]; if(!p) return;
+    if(p.type==="cloud"){
+        const pw = prompt("Enter cloud password to edit cloud pair:");
+        if(pw!==CLOUD_PASSWORD){alert("Wrong cloud password"); return;}
+    }
+    editName.value=name; editPoint.value=p.point; editPip.value=p.pip; editCommission.value=p.commission;
+    editor.style.display="block"; stepUnlock.style.display="none";
 }
 
 async function deleteFromList(name){
-  const p=pairs[name]; if(!p) return;
-  if(p.type==='cloud'){
-    const pw=prompt("Enter cloud password to delete cloud pair:");
-    if(pw!==CLOUD_PASSWORD){alert("Wrong cloud password."); return;}
-    try{await db.collection(FIRE_COLLECTION).doc(name).delete();}catch(e){console.warn("Cloud delete failed",e);}
-  }
-  delete pairs[name];
-  saveLocalPairs();
-  populateDropdown();
-  openDeleteEdit();
+    const p = pairs[name]; if(!p) return;
+    if(p.type==="cloud"){
+        const pw = prompt("Enter cloud password to delete cloud pair:");
+        if(pw!==CLOUD_PASSWORD){alert("Wrong cloud password"); return;}
+        await db.collection(FIRE_COLLECTION).doc(name).delete().catch(()=>{});
+    }
+    delete pairs[name];
+    saveLocalPairs();
+    populateDropdown();
+    openDeleteEdit();
 }
 
-// ===================== Manual Cloud Reload =====================
+// ================== Cloud reload ==================
 async function reloadCloud(){
-  try{await db.collection(FIRE_COLLECTION).get(); alert("Cloud fetch requested — latest data will appear shortly.");}
-  catch(e){alert("Cloud reload failed: "+(e.message||e));}
+    try{
+        await db.collection(FIRE_COLLECTION).get();
+        alert("Cloud fetch requested, dropdown will update shortly");
+    }catch(e){alert("Cloud reload failed: "+e.message);}
 }
 
-// ===================== DOM Ready =====================
-document.addEventListener('DOMContentLoaded',()=>{
-  populateDropdown();
-  if(localStorage.getItem('fx_unlocked')==='1'){
-    document.getElementById('logoutBtn').style.display='inline-block';
-  } else {
-    document.getElementById('logoutBtn').style.display='none';
-  }
-});
-</script>
-</body>
-</html>
+// ================== Cloud Listener ==================
+function startCloudListener(){
+    db.collection(FIRE_COLLECTION).onSnapshot(snapshot=>{
+        snapshot.forEach(doc=>{
+            const name=doc.id; const data=doc.data();
+            pairs[name]={point:data.point??0,pip:data.pip??0,commission:data.commission??0,type:"cloud"};
+        });
+        populateDropdown();
+        saveLocalPairs();
+    });
+}
+
+startCloudListener();
