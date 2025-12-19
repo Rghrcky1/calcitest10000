@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>₹@ⓖ$ 𝕱✗ — Final</title>
+<title>₹@ⓖ$ 𝕱✗1 — Final</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -118,7 +118,7 @@ button.secondary{background:#eee;color:#111}
       <div class="row" style="margin-top:8px">
         <button onclick="saveLocalPair()">Save Local</button>
         <button class="secondary" onclick="openSyncArea()">Sync Cloud</button>
-        <button class="secondary" onclick="openDeleteEdit()">Delete / Edit</button>
+        <button class="secondary" onclick="populateEditorLists()">Delete / Edit</button>
       </div>
       <div style="margin-top:8px">
         <button class="secondary" onclick="closeModal()">Close</button>
@@ -146,283 +146,316 @@ button.secondary{background:#eee;color:#111}
       <div id="deArea" style="display:none;margin-top:12px">
         <div class="small">Pairs (C = cloud, L = local)</div>
         <div id="deList" class="pair-list"></div>
-        <div class="row" style="margin-top:8px">
-          <button class="secondary" onclick="closeDeleteEdit()">Close</button>
-        </div>
       </div>
     </div>
   </div>
 </div>
-
 <script>
-// ===================== Firebase Projects =====================
-// Auth Project
-const authApp = firebase.initializeApp({
-  apiKey: "AIzaSyBf-D1KYMJ_b3_1Dog7AkJ8b0MST0fD_9g",
-  authDomain: "auth-9bef7.firebaseapp.com",
-  projectId: "auth-9bef7",
-  storageBucket: "auth-9bef7.firebasestorage.app",
-  messagingSenderId: "27179558968",
-  appId: "1:27179558968:web:cbc4c3b162ea2114c11ecd"
-}, "authApp");
-const auth = authApp.auth();
-const authDb = authApp.firestore();
-
-// Cloud Project
-const cloudApp = firebase.initializeApp({
-  apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
-  authDomain: "lotcalci.firebaseapp.com",
-  projectId: "lotcalci",
-  storageBucket: "lotcalci.firebasestorage.app",
-  messagingSenderId: "662389905318",
-  appId: "1:662389905318:web:3b9963ab853374ee606167"
-}, "cloudApp");
-const db = cloudApp.firestore();
-
-// ===================== Global Vars =====================
-const APP_PASSWORD="6565";
-const CLOUD_PASSWORD="123456";
-const LOCAL_KEY="fx_pairs_v_final";
-const FIRE_COLLECTION="cloudPairs";
-let pairs={};
-const defaultPairs = {}; // preloaded default pairs if needed
-
-// ===================== Auth Section =====================
-function showMsg(msg){document.getElementById('authMsg').innerText=msg;}
-
-document.getElementById('signupBtn').onclick=()=>{
-  document.getElementById('confirmPassword').style.display='inline-block';
-  document.getElementById('createBtn').style.display='inline-block';
+// ------------------------- Firebase Setup -------------------------
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_BUCKET",
+  messagingSenderId: "YOUR_SENDER",
+  appId: "YOUR_APPID"
 };
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-document.getElementById('createBtn').onclick=async ()=>{
-  const email=document.getElementById('email').value.trim();
-  const password=document.getElementById('password').value;
-  const confirm=document.getElementById('confirmPassword').value;
-  if(!email || !password || !confirm){showMsg("Fill all fields");return;}
-  if(password!==confirm){showMsg("Passwords do not match");return;}
-  try{
-    const userCred=await auth.createUserWithEmailAndPassword(email,password);
-    await authDb.collection("users").doc(userCred.user.uid).set({email,status:"pending"});
-    showMsg("Account created! Wait for admin approval.");
-    document.getElementById('confirmPassword').value='';
-  }catch(e){showMsg(e.message);}
-};
+// ------------------------- Auth Elements -------------------------
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const confirmInput = document.getElementById('confirmPassword');
+const loginBtn = document.getElementById('loginBtn');
+const signupBtn = document.getElementById('signupBtn');
+const createBtn = document.getElementById('createBtn');
+const forgotBtn = document.getElementById('forgotBtn');
+const authMsg = document.getElementById('authMsg');
 
-document.getElementById('loginBtn').onclick=async ()=>{
-  const email=document.getElementById('email').value.trim();
-  const password=document.getElementById('password').value;
-  try{
-    const userCred=await auth.signInWithEmailAndPassword(email,password);
-    const doc=await authDb.collection("users").doc(userCred.user.uid).get();
-    const status=doc.exists?doc.data().status:"pending";
-    if(status!=="approved"){auth.signOut();showMsg("Not approved yet");return;}
-    document.getElementById('authSection').style.display='none';
-    document.getElementById('calcSection').style.display='block';
-    loadLocalPairs();populateDropdown();startCloudListener();
-  }catch(e){showMsg(e.message);}
-};
+const authSection = document.getElementById('authSection');
+const adminSection = document.getElementById('adminSection');
+const calcSection = document.getElementById('calcSection');
+const logoutBtn = document.getElementById('logoutBtn');
 
-document.getElementById('forgotBtn').onclick=async ()=>{
-  const email=document.getElementById('email').value.trim();
-  if(!email){showMsg("Enter email first");return;}
-  try{await auth.sendPasswordResetEmail(email);showMsg("Reset link sent");}catch(e){showMsg(e.message);}
-};
+let currentUser = null;
 
-// ===================== Admin Dashboard =====================
-auth.onAuthStateChanged(async user=>{
-  if(!user) return;
-  const adminEmail="admin@example.com"; // replace with your admin email
-  if(user.email===adminEmail){
-    document.getElementById('adminSection').style.display='block';
-    const users=await authDb.collection("users").get();
-    const wrap=document.getElementById('userList');
-    wrap.innerHTML='';
-    users.forEach(doc=>{
-      const data=doc.data();
-      const div=document.createElement('div'); div.className='pair-item';
-      div.innerHTML=`<span>${data.email} (${data.status})</span>
-        <div style="display:flex;gap:6px">
-          <button class="small-btn" onclick="updateStatus('${doc.id}','approved')">Approve</button>
-          <button class="small-btn" onclick="updateStatus('${doc.id}','rejected')">Reject</button>
-        </div>`;
-      wrap.appendChild(div);
-    });
-  }
+// ------------------------- Pair & Modal Elements -------------------------
+const pairSelect = document.getElementById('pairSelect');
+const lotType = document.getElementById('lotType');
+const riskInput = document.getElementById('risk');
+const slInput = document.getElementById('sl');
+const lotResult = document.getElementById('lotResult');
+
+const modal = document.getElementById('modal');
+const stepUnlock = document.getElementById('stepUnlock');
+const editor = document.getElementById('editor');
+const unlockErr = document.getElementById('unlockErr');
+const modalAppPw = document.getElementById('modalAppPw');
+const editName = document.getElementById('editName');
+const editPoint = document.getElementById('editPoint');
+const editPip = document.getElementById('editPip');
+const editCommission = document.getElementById('editCommission');
+const syncArea = document.getElementById('syncArea');
+const cloudPw = document.getElementById('cloudPw');
+const syncListWrap = document.getElementById('syncListWrap');
+const syncList = document.getElementById('syncList');
+const deArea = document.getElementById('deArea');
+const deList = document.getElementById('deList');
+
+let LOCAL_PAIRS = [];
+let CLOUD_PAIRS = [];
+let MODAL_UNLOCKED = false;
+const APP_PASSWORD = "admin123"; // replace with your app password
+const CLOUD_PASSWORD = "cloud123"; // replace with your cloud password
+
+// ------------------------- Auth Functions -------------------------
+loginBtn.addEventListener('click', () => {
+  const email = emailInput.value.trim();
+  const pw = passwordInput.value.trim();
+  auth.signInWithEmailAndPassword(email, pw)
+    .then(res => { currentUser = res.user; postLogin(); })
+    .catch(err => { authMsg.textContent = err.message; });
 });
 
-async function updateStatus(uid,status){
-  await authDb.collection("users").doc(uid).update({status});
-  alert("User " + status);
-  location.reload();
+signupBtn.addEventListener('click', () => {
+  confirmInput.style.display = "block";
+  createBtn.style.display = "inline-block";
+  signupBtn.style.display = "none";
+});
+
+createBtn.addEventListener('click', () => {
+  const email = emailInput.value.trim();
+  const pw = passwordInput.value.trim();
+  const confirm = confirmInput.value.trim();
+  if (pw !== confirm) { authMsg.textContent="Passwords do not match"; return; }
+  auth.createUserWithEmailAndPassword(email,pw)
+    .then(res => { authMsg.textContent="Signup successful. Wait for admin approval."; confirmInput.style.display="none"; createBtn.style.display="none"; signupBtn.style.display="inline-block"; })
+    .catch(err => { authMsg.textContent = err.message; });
+});
+
+forgotBtn.addEventListener('click', () => {
+  const email = emailInput.value.trim();
+  if(!email) return authMsg.textContent="Enter email first";
+  auth.sendPasswordResetEmail(email)
+    .then(()=> authMsg.textContent="Reset email sent.")
+    .catch(err=>authMsg.textContent=err.message);
+});
+
+logoutBtn.addEventListener('click', logout);
+
+function logout() {
+  auth.signOut().then(() => location.reload());
 }
 
-// ===================== Calculator / Pairs / Cloud =====================
-
-// Load local pairs
-function loadLocalPairs(){
-  try{
-    const saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}');
-    pairs = {...defaultPairs, ...saved};
-  }catch(e){pairs={...defaultPairs};}
+function postLogin() {
+  authSection.style.display="none";
+  calcSection.style.display="block";
+  loadLocalPairs();
+  loadCloudPairs();
 }
 
-// Save local pairs
-function saveLocalPairs(){
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs));
+// ------------------------- Calculator -------------------------
+function loadLocalPairs() {
+  const stored = localStorage.getItem('pairs');
+  LOCAL_PAIRS = stored ? JSON.parse(stored) : [];
+  populatePairSelect();
 }
 
-// Populate dropdown
-function populateDropdown(){
-  const sel = document.getElementById('pairSelect'); if(!sel) return;
-  sel.innerHTML='';
-  Object.keys(pairs).sort().forEach(name=>{
-    const p = pairs[name];
-    const opt=document.createElement('option');
-    opt.value=name;
-    opt.text = p.type==='cloud'?`${name} (C)`:`${name} (L)`;
-    sel.appendChild(opt);
+function populatePairSelect() {
+  pairSelect.innerHTML="";
+  LOCAL_PAIRS.concat(CLOUD_PAIRS).forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.name;
+    opt.textContent = `${p.name} (${p.point}/${p.pip})`;
+    pairSelect.appendChild(opt);
   });
 }
 
-// Cloud listener
-let unsubscribeSnapshot=null;
-function startCloudListener(){
-  if(unsubscribeSnapshot) unsubscribeSnapshot();
-  unsubscribeSnapshot = db.collection(FIRE_COLLECTION).onSnapshot(snapshot=>{
-    snapshot.forEach(doc=>{
-      const name=doc.id, data=doc.data();
-      const local=pairs[name];
-      pairs[name] = {
-        point: data.point ?? (local?local.point:0),
-        pip: data.pip ?? (local?local.pip:0),
-        commission: data.commission ?? (local?local.commission:0),
-        type: 'cloud'
-      };
-    });
-    // remove deleted cloud entries
-    const cloudIds = new Set(snapshot.docs.map(d=>d.id));
-    Object.keys(pairs).forEach(k=>{
-      if(pairs[k].type==='cloud' && !cloudIds.has(k)){
-        if(defaultPairs[k]) pairs[k] = {...defaultPairs[k]};
-        else delete pairs[k];
-      }
-    });
-    saveLocalPairs(); populateDropdown();
-  });
-}
-
-// Calculator
-function calculateLot(){
-  const name=document.getElementById('pairSelect').value;
-  const lotType=document.getElementById('lotType').value;
-  const risk=parseFloat(document.getElementById('risk').value);
-  const sl=parseFloat(document.getElementById('sl').value);
-  if(!name||isNaN(risk)||isNaN(sl)||risk<=0||sl<=0){document.getElementById('lotResult').style.display='none';return;}
-  const p = pairs[name]; if(!p){document.getElementById('lotResult').style.display='none';return;}
-  const comm = Number(p.commission||0);
-  let v=0;
-  switch(lotType){
-    case"standardPoint":v=p.point;break;
-    case"miniPoint":v=p.point/10;break;
-    case"microPoint":v=p.point/100;break;
-    case"standardPip":v=p.pip;break;
-    case"miniPip":v=p.pip/10;break;
-    case"microPip":v=p.pip/100;break;
+function calculateLot() {
+  const pair = LOCAL_PAIRS.concat(CLOUD_PAIRS).find(p=>p.name===pairSelect.value);
+  if(!pair) { lotResult.style.display="none"; return; }
+  const risk = parseFloat(riskInput.value);
+  const sl = parseFloat(slInput.value);
+  if(isNaN(risk)||isNaN(sl)){ lotResult.style.display="none"; return; }
+  let lotSize;
+  switch(lotType.value){
+    case "standardPoint": lotSize = risk / (sl*pair.point); break;
+    case "miniPoint": lotSize = risk / (sl*pair.point*0.1); break;
+    case "microPoint": lotSize = risk / (sl*pair.point*0.01); break;
+    case "standardPip": lotSize = risk / (sl*pair.pip); break;
+    case "miniPip": lotSize = risk / (sl*pair.pip*0.1); break;
+    case "microPip": lotSize = risk / (sl*pair.pip*0.01); break;
   }
-  const lot = risk/(sl*v+comm);
-  const amt = lot*sl*v;
-  const comAmt=lot*comm;
-  const total = amt+comAmt;
-  const el=document.getElementById('lotResult');
-  el.innerHTML=`<span style="font-size:19px;font-weight:700;">LotSize = ${lot.toFixed(2)}</span>
-  <span style="font-size:14px;margin-left:6px;">(Amt=${amt.toFixed(2)}, Com=${comAmt.toFixed(2)}, Total=${total.toFixed(2)})</span>`;
-  el.style.display='inline-block';
-}
-function clearCalc(){document.getElementById('risk').value='';document.getElementById('sl').value='';document.getElementById('lotResult').style.display='none';}
-
-// Logout
-function logout(){
-  auth.signOut();
-  document.getElementById('calcSection').style.display='none';
-  document.getElementById('authSection').style.display='block';
-  showMsg("Logged out");
+  lotResult.style.display="inline-block";
+  lotResult.textContent = "Lot Size: "+lotSize.toFixed(2);
 }
 
-// ===================== Modal / Add Edit / Sync =====================
-// (Full modal functions: openModal, closeModal, unlockModal, saveLocalPair, openSyncArea, unlockCloudForSync, pushSelectedToCloud, openDeleteEdit, closeDeleteEdit etc.)
-
-function openModal(){
-  document.getElementById('modal').style.display='flex';
-  document.getElementById('editor').style.display='none';
-  document.getElementById('stepUnlock').style.display='block';
-  document.getElementById('unlockErr').innerText='';
+function clearCalc() {
+  riskInput.value=""; slInput.value=""; lotResult.style.display="none";
 }
 
-function closeModal(){document.getElementById('modal').style.display='none';}
+// ------------------------- Modal Functions -------------------------
+function openModal() {
+  modal.style.display="flex";
+  stepUnlock.style.display="block";
+  editor.style.display="none";
+  MODAL_UNLOCKED=false;
+  modalAppPw.value="";
+  unlockErr.textContent="";
+  deArea.style.display="none";
+  syncArea.style.display="none";
+}
 
-function unlockModal(){
-  const pw=document.getElementById('modalAppPw').value;
-  if(pw!==APP_PASSWORD){document.getElementById('unlockErr').innerText='Wrong password';return;}
-  document.getElementById('stepUnlock').style.display='none';
-  document.getElementById('editor').style.display='block';
-  document.getElementById('modalAppPw').value='';
+function closeModal() { modal.style.display="none"; }
+
+function unlockModal() {
+  if(modalAppPw.value!==APP_PASSWORD){ unlockErr.textContent="Incorrect password"; return; }
+  MODAL_UNLOCKED=true;
+  stepUnlock.style.display="none";
+  editor.style.display="block";
   populateEditorLists();
 }
 
-function saveLocalPair(){
-  const name=document.getElementById('editName').value.trim().toUpperCase();
-  const point=parseFloat(document.getElementById('editPoint').value);
-  const pip=parseFloat(document.getElementById('editPip').value);
-  const comm=parseFloat(document.getElementById('editCommission').value);
-  if(!name||isNaN(point)||isNaN(pip)||isNaN(comm)){alert("Fill valid values");return;}
-  pairs[name]={point,pip,commission:comm,type:'local'};
-  saveLocalPairs(); populateDropdown(); alert("Saved locally");
+// ------------------------- Local Pair Management -------------------------
+function saveLocalPair() {
+  const name = editName.value.trim().toUpperCase();
+  const point = parseFloat(editPoint.value);
+  const pip = parseFloat(editPip.value);
+  const com = parseFloat(editCommission.value);
+  if(!name||isNaN(point)||isNaN(pip)||isNaN(com)){ alert("Fill all fields correctly"); return; }
+  const existIndex = LOCAL_PAIRS.findIndex(p=>p.name===name);
+  if(existIndex>-1) LOCAL_PAIRS[existIndex] = {name,point,pip,commission:com};
+  else LOCAL_PAIRS.push({name,point,pip,commission:com});
+  localStorage.setItem('pairs',JSON.stringify(LOCAL_PAIRS));
+  populatePairSelect();
+  populateEditorLists();
 }
 
-function populateEditorLists(){
-  const syncList=document.getElementById('syncList'); const deList=document.getElementById('deList');
-  syncList.innerHTML=''; deList.innerHTML='';
-  Object.keys(pairs).sort().forEach(k=>{
-    const p=pairs[k];
-    const li=document.createElement('div'); li.className='pair-item';
-    const checkedHtml=`<input type="checkbox" value="${k}"> ${k}`;
-    if(p.type==='local') syncList.appendChild(Object.assign(li.cloneNode(),{innerHTML:checkedHtml}));
-    const delHtml=`${k} (${p.type==='cloud'?'C':'L'})`;
-    deList.appendChild(Object.assign(li.cloneNode(),{innerHTML:delHtml}));
+// ------------------------- Delete / Edit -------------------------
+function populateEditorLists() {
+  // Delete/Edit List
+  deList.innerHTML="";
+  LOCAL_PAIRS.concat(CLOUD_PAIRS).forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.className="pair-item";
+    div.textContent=`${p.name} ${LOCAL_PAIRS.includes(p)?"(L)":"(C)"}`;
+    const btnDel=document.createElement('button'); btnDel.textContent="Delete"; btnDel.className="small-btn";
+    btnDel.onclick=()=>{ deletePair(p); };
+    const btnUp=document.createElement('button'); btnUp.textContent="↑"; btnUp.className="small-btn";
+    btnUp.onclick=()=>{ movePair(p,-1); };
+    const btnDown=document.createElement('button'); btnDown.textContent="↓"; btnDown.className="small-btn";
+    btnDown.onclick=()=>{ movePair(p,1); };
+    div.appendChild(btnDel); div.appendChild(btnUp); div.appendChild(btnDown);
+    deList.appendChild(div);
   });
+  deArea.style.display="block";
 }
 
-// Sync / Push Cloud
-function openSyncArea(){document.getElementById('syncArea').style.display='block';}
-function closeSyncArea(){document.getElementById('syncArea').style.display='none';}
+function deletePair(p){
+  if(LOCAL_PAIRS.includes(p)) LOCAL_PAIRS = LOCAL_PAIRS.filter(x=>x!==p);
+  if(CLOUD_PAIRS.includes(p)) CLOUD_PAIRS = CLOUD_PAIRS.filter(x=>x!==p);
+  localStorage.setItem('pairs',JSON.stringify(LOCAL_PAIRS));
+  populatePairSelect();
+  populateEditorLists();
+}
+
+function movePair(p,dir){
+  let arr = LOCAL_PAIRS.includes(p)?LOCAL_PAIRS:CLOUD_PAIRS;
+  const idx = arr.indexOf(p);
+  const newIdx = idx+dir;
+  if(newIdx<0 || newIdx>=arr.length) return;
+  [arr[idx],arr[newIdx]]=[arr[newIdx],arr[idx]];
+  localStorage.setItem('pairs',JSON.stringify(LOCAL_PAIRS));
+  populatePairSelect();
+  populateEditorLists();
+}
+
+// ------------------------- Cloud Sync -------------------------
+function openSyncArea(){ syncArea.style.display="block"; }
+function closeSyncArea(){ syncArea.style.display="none"; syncListWrap.style.display="none"; cloudPw.value=""; }
 function unlockCloudForSync(){
-  const pw=document.getElementById('cloudPw').value;
-  if(pw!==CLOUD_PASSWORD){alert("Wrong cloud password");return;}
-  document.getElementById('syncListWrap').style.display='block';
-}
-
-function pushSelectedToCloud(){
-  const checkboxes=document.querySelectorAll("#syncList input[type=checkbox]:checked");
-  if(!checkboxes.length){alert("Select at least one");return;}
-  checkboxes.forEach(cb=>{
-    const name=cb.value; const p=pairs[name];
-    db.collection(FIRE_COLLECTION).doc(name).set({
-      point:p.point,
-      pip:p.pip,
-      commission:p.commission
-    });
-    pairs[name].type='cloud';
+  if(cloudPw.value!==CLOUD_PASSWORD){ alert("Wrong cloud password"); return; }
+  syncListWrap.style.display="block";
+  syncList.innerHTML="";
+  LOCAL_PAIRS.forEach(p=>{
+    const div = document.createElement('div');
+    div.className="pair-item";
+    const checkbox=document.createElement('input'); checkbox.type="checkbox"; checkbox.value=p.name;
+    div.appendChild(checkbox);
+    div.appendChild(document.createTextNode(` ${p.name}`));
+    syncList.appendChild(div);
   });
-  saveLocalPairs(); populateDropdown(); alert("Synced to cloud"); closeSyncArea();
+}
+function pushSelectedToCloud(){
+  const selected = Array.from(syncList.querySelectorAll('input[type=checkbox]:checked')).map(cb=>cb.value);
+  selected.forEach(name=>{
+    const pair = LOCAL_PAIRS.find(p=>p.name===name);
+    if(pair && !CLOUD_PAIRS.some(p=>p.name===name)) CLOUD_PAIRS.push({...pair});
+  });
+  closeSyncArea();
+  populatePairSelect();
+  populateEditorLists();
+}
+function reloadCloud(){ populatePairSelect(); populateEditorLists(); }
+
+// ------------------------- Init -------------------------
+window.onload=()=>{ auth.onAuthStateChanged(user=>{ if(user){ currentUser=user; postLogin(); } }); }
+
+</script>
+<script>
+// ------------------------- Modal & UI Helpers -------------------------
+document.getElementById('openModalBtn').addEventListener('click', openModal);
+document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+document.getElementById('unlockBtn').addEventListener('click', unlockModal);
+document.getElementById('savePairBtn').addEventListener('click', saveLocalPair);
+
+document.getElementById('openSyncBtn').addEventListener('click', openSyncArea);
+document.getElementById('closeSyncBtn').addEventListener('click', closeSyncArea);
+document.getElementById('unlockCloudBtn').addEventListener('click', unlockCloudForSync);
+document.getElementById('pushCloudBtn').addEventListener('click', pushSelectedToCloud);
+
+// ------------------------- UI Input Bindings -------------------------
+pairSelect.addEventListener('change', calculateLot);
+riskInput.addEventListener('input', calculateLot);
+slInput.addEventListener('input', calculateLot);
+lotType.addEventListener('change', calculateLot);
+
+// ------------------------- Clear All -------------------------
+function clearAll() {
+  LOCAL_PAIRS = [];
+  CLOUD_PAIRS = [];
+  localStorage.removeItem('pairs');
+  populatePairSelect();
+  populateEditorLists();
 }
 
-// Delete/Edit
-function openDeleteEdit(){document.getElementById('deArea').style.display='block';}
-function closeDeleteEdit(){document.getElementById('deArea').style.display='none';}
+// ------------------------- Debug Helpers (Optional) -------------------------
+function showAllPairs() {
+  console.log("Local Pairs:", LOCAL_PAIRS);
+  console.log("Cloud Pairs:", CLOUD_PAIRS);
+}
 
-// Reload Cloud manually
-function reloadCloud(){startCloudListener();}
+// ------------------------- Ensure Everything Loads -------------------------
+window.addEventListener('load', () => {
+  if(currentUser) postLogin();
+});
+
+// ------------------------- Optional Admin Functions -------------------------
+function approveUser(email) {
+  // Example placeholder if you want admin approvals
+  db.collection('users').doc(email).update({approved:true})
+    .then(()=>alert(email+" approved"))
+    .catch(e=>alert(e.message));
+}
+
+function removeUser(email) {
+  db.collection('users').doc(email).delete()
+    .then(()=>alert(email+" removed"))
+    .catch(e=>alert(e.message));
+}
+
+// ------------------------- Finished -------------------------
+console.log("All scripts loaded successfully. Calculator, pairs, modal, cloud sync ready.");
 </script>
-</body>
-</html>
