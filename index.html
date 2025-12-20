@@ -59,7 +59,9 @@ button.secondary{background:#eee;color:#111}
     <!-- Authentication Section -->
     <div id="authSection">
      <input id="name" type="text" placeholder="Full Name" style="display:none">
+     <input id="name" type="text" placeholder="Full Name" style="display:none">
      <input id="email" type="email" placeholder="Email">
+
      <input id="password" type="password" placeholder="Password">
      <input id="confirmPassword" type="password" placeholder="Confirm Password" style="display:none">
 
@@ -502,46 +504,18 @@ function create(){
   const e=document.getElementById('email').value.trim();
   const p=document.getElementById('password').value;
   const cp=document.getElementById('confirmPassword').value;
-
-  const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if(!name){
-    document.getElementById('authMsg').innerText="Enter name";
-    return;
-  }
-  if(!emailRegex.test(e)){
-    document.getElementById('authMsg').innerText="Enter valid email";
-    return;
-  }
-  if(p.length < 6){
-    document.getElementById('authMsg').innerText="Password must be at least 6 characters";
-    return;
-  }
-  if(p !== cp){
-    document.getElementById('authMsg').innerText="Passwords do not match";
-    return;
-  }
-
-  function create(){
-  const name=document.getElementById('name').value.trim();
-  const e=document.getElementById('email').value.trim();
-  const p=document.getElementById('password').value;
-  const cp=document.getElementById('confirmPassword').value;
+  const authMsg=document.getElementById('authMsg');
 
   const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if(!name){ authMsg.innerText="Enter name"; return; }
   if(!emailRegex.test(e)){ authMsg.innerText="Enter valid email"; return; }
-  if(p.length < 6){ authMsg.innerText="Password min 6 chars"; return; }
-  if(p !== cp){ authMsg.innerText="Passwords do not match"; return; }
+  if(p.length<6){ authMsg.innerText="Password min 6 chars"; return; }
+  if(p!==cp){ authMsg.innerText="Passwords do not match"; return; }
 
   auth.createUserWithEmailAndPassword(e,p)
-    .then(cred=>{
-      return cred.user.updateProfile({ displayName:name });
-    })
-    .then(()=>{
-      return auth.signOut();   // 🔴 IMPORTANT FIX
-    })
+    .then(cred=>cred.user.updateProfile({displayName:name}))
+    .then(()=>auth.signOut())   // 🔴 FORCE BACK TO LOGIN
     .then(()=>{
       authMsg.innerText="Account created. Please login.";
       document.getElementById('name').style.display='none';
@@ -560,21 +534,29 @@ function create(){
     });
 }
 
-      document.getElementById('name').style.display='none';
-      document.getElementById('confirmPassword').style.display='none';
-      document.getElementById('createBtn').style.display='none';
-      document.getElementById('signupBtn').style.display='inline-block';
-      document.getElementById('password').value='';
-      document.getElementById('confirmPassword').value='';
-    })
-    .catch(err=>{
-      if(err.code === "auth/email-already-in-use"){
-        document.getElementById('authMsg').innerText="User already exists. Please login.";
-      } else {
-        document.getElementById('authMsg').innerText=err.message;
-      }
-    });
-}
+  if(!emailRegex.test(e)){
+    document.getElementById('authMsg').innerText="Enter valid email";
+    return;
+  }
+  if(p.length < 6){
+    document.getElementById('authMsg').innerText="Password must be at least 6 characters";
+    return;
+  }
+  if(p !== cp){
+    document.getElementById('authMsg').innerText="Passwords do not match";
+    return;
+  }
+   auth.createUserWithEmailAndPassword(e,p).then(cred=>{
+  return cred.user.updateProfile({ displayName:name });
+}).then(()=>{
+  document.getElementById('authMsg').innerText="User created. Login now.";
+  document.getElementById('name').style.display='none';
+  document.getElementById('confirmPassword').style.display='none';
+  document.getElementById('createBtn').style.display='none';
+  document.getElementById('signupBtn').style.display='inline-block';
+}).catch(err=>{
+  document.getElementById('authMsg').innerText=err.message;
+});
 
 }
 function logout(){auth.signOut();document.getElementById('calcSection').style.display='none';document.getElementById('authSection').style.display='block';document.getElementById('authMsg').innerText='';}
