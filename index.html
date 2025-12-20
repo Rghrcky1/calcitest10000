@@ -471,96 +471,84 @@ function moveDown(name){
 
 
 // ===================== Login / Signup / Logout =====================
-function login(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value;auth.signInWithEmailAndPassword(e,p).then(()=>{document.getElementById('authSection').style.display='none';document.getElementById('calcSection').style.display='block';loadLocalPairs();populateDropdown();startCloudListener();}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
-function signup(){
-  document.getElementById('name').style.display='block';
-  document.getElementById('confirmPassword').style.display='block';
-  document.getElementById('createBtn').style.display='inline-block';
-  document.getElementById('signupBtn').style.display='none';
+
+function login(){
+  const e = email.value.trim();
+  const p = password.value;
+  const authMsg = document.getElementById('authMsg');
+
+  auth.signInWithEmailAndPassword(e,p)
+    .then(cred=>{
+      if(!cred.user.emailVerified){
+        auth.signOut();
+        authMsg.innerText = "Verify your email before login.";
+        return;
+      }
+
+      authSection.style.display='none';
+      calcSection.style.display='block';
+      loadLocalPairs();
+      populateDropdown();
+      startCloudListener();
+    })
+    .catch(()=>{
+      authMsg.innerText="Invalid email or password";
+    });
 }
+
+function signup(){
+  name.style.display='block';
+  confirmPassword.style.display='block';
+  createBtn.style.display='inline-block';
+  signupBtn.style.display='none';
+}
+
 function create(){
-  const name=document.getElementById('name').value.trim();
-  const e=document.getElementById('email').value.trim();
-  const p=document.getElementById('password').value;
-  const cp=document.getElementById('confirmPassword').value;
+  const nameVal = name.value.trim();
+  const e = email.value.trim();
+  const p = password.value;
+  const cp = confirmPassword.value;
+  const authMsg = document.getElementById('authMsg');
 
-  const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  if(!name){
-    document.getElementById('authMsg').innerText="Enter your name";
-    return;
-  }
-  if(!emailRegex.test(e)){
-    document.getElementById('authMsg').innerText="Enter valid email address";
-    return;
-  }
-  if(p!==cp){
-    document.getElementById('authMsg').innerText="Passwords do not match";
-    return;
-  }
-
- function create(){
-  const name=document.getElementById('name').value.trim();
-  const e=document.getElementById('email').value.trim();
-  const p=document.getElementById('password').value;
-  const cp=document.getElementById('confirmPassword').value;
-  const authMsg=document.getElementById('authMsg');
-
-  const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if(!name){ authMsg.innerText="Enter name"; return; }
+  if(!nameVal){ authMsg.innerText="Enter name"; return; }
   if(!emailRegex.test(e)){ authMsg.innerText="Enter valid email"; return; }
-  if(p.length<6){ authMsg.innerText="Password min 6 chars"; return; }
-  if(p!==cp){ authMsg.innerText="Passwords do not match"; return; }
+  if(p.length < 6){ authMsg.innerText="Password min 6 chars"; return; }
+  if(p !== cp){ authMsg.innerText="Passwords do not match"; return; }
 
   auth.createUserWithEmailAndPassword(e,p)
-    .then(cred=>cred.user.updateProfile({displayName:name}))
-    .then(()=>auth.signOut())   // 🔴 FORCE BACK TO LOGIN
+    .then(cred=>{
+      return cred.user.updateProfile({displayName:nameVal})
+        .then(()=>cred.user.sendEmailVerification());
+    })
     .then(()=>{
-      authMsg.innerText="Account created. Please login.";
-      document.getElementById('name').style.display='none';
-      document.getElementById('confirmPassword').style.display='none';
-      document.getElementById('createBtn').style.display='none';
-      document.getElementById('signupBtn').style.display='inline-block';
-      document.getElementById('password').value='';
-      document.getElementById('confirmPassword').value='';
+      auth.signOut();
+      authMsg.innerText="Verification email sent. Verify then login.";
+
+      name.style.display='none';
+      confirmPassword.style.display='none';
+      createBtn.style.display='none';
+      signupBtn.style.display='inline-block';
+
+      password.value='';
+      confirmPassword.value='';
     })
     .catch(err=>{
       if(err.code==="auth/email-already-in-use"){
-        authMsg.innerText="User already exists. Please login.";
+        authMsg.innerText="User already exists. Login instead.";
       } else {
         authMsg.innerText=err.message;
       }
     });
 }
 
-  if(!emailRegex.test(e)){
-    document.getElementById('authMsg').innerText="Enter valid email";
-    return;
-  }
-  if(p.length < 6){
-    document.getElementById('authMsg').innerText="Password must be at least 6 characters";
-    return;
-  }
-  if(p !== cp){
-    document.getElementById('authMsg').innerText="Passwords do not match";
-    return;
-  }
-   auth.createUserWithEmailAndPassword(e,p).then(cred=>{
-  return cred.user.updateProfile({ displayName:name });
-}).then(()=>{
-  document.getElementById('authMsg').innerText="User created. Login now.";
-  document.getElementById('name').style.display='none';
-  document.getElementById('confirmPassword').style.display='none';
-  document.getElementById('createBtn').style.display='none';
-  document.getElementById('signupBtn').style.display='inline-block';
-}).catch(err=>{
-  document.getElementById('authMsg').innerText=err.message;
-});
-
+function logout(){
+  auth.signOut();
+  calcSection.style.display='none';
+  authSection.style.display='block';
+  authMsg.innerText='';
 }
-function logout(){auth.signOut();document.getElementById('calcSection').style.display='none';document.getElementById('authSection').style.display='block';document.getElementById('authMsg').innerText='';}
-
 // ===================== Reload Cloud =====================
 function reloadCloud(){startCloudListener();}
  
