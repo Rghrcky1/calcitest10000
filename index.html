@@ -74,10 +74,10 @@ button.secondary{background:#eee;color:#111}
       </select>
 
       <label for="risk">Risk ($)</label>
-      <input id="risk" type="number">
+      <input id="risk" type="number" placeholder="e.g. 30">
 
       <label for="sl">Stop-loss (points / pips)</label>
-      <input id="sl" type="number">
+      <input id="sl" type="number" placeholder="e.g. 15">
 
       <div class="row">
         <button onclick="calculateLot()">Calculate Lot Size</button>
@@ -150,11 +150,14 @@ button.secondary{background:#eee;color:#111}
 </div>
 
 <script>
-// ================= Firebase =================
+// ===================== Firebase =====================
 const authApp = firebase.initializeApp({
   apiKey: "AIzaSyBf-D1KYMJ_b3_1Dog7AkJ8b0MST0fD_9g",
   authDomain: "auth-9bef7.firebaseapp.com",
   projectId: "auth-9bef7",
+  storageBucket: "auth-9bef7.firebasestorage.app",
+  messagingSenderId: "27179558968",
+  appId: "1:27179558968:web:cbc4c3b162ea2114c11ecd"
 }, "authApp");
 const auth = authApp.auth();
 
@@ -162,16 +165,20 @@ const cloudApp = firebase.initializeApp({
   apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
   authDomain: "lotcalci.firebaseapp.com",
   projectId: "lotcalci",
+  storageBucket: "lotcalci.firebasestorage.app",
+  messagingSenderId: "662389905318",
+  appId: "1:662389905318:web:3b9963ab853374ee606167"
 }, "cloudApp");
 const db = cloudApp.firestore();
 
-// ================= Globals =================
+// ===================== Globals =====================
 const LOCAL_KEY="fx_pairs_v_final";
 const FIRE_COLLECTION="cloudPairs";
+const CLOUD_PASSWORD="123456";
 let pairs={};
 let unsubscribeSnapshot=null;
 
-// ================= Local / Cloud =================
+// ===================== Local / Cloud =====================
 function loadLocalPairs(){
   const raw=localStorage.getItem(LOCAL_KEY);
   pairs=raw?JSON.parse(raw):{};
@@ -196,23 +203,30 @@ function startCloudListener(){
   unsubscribeSnapshot=db.collection(FIRE_COLLECTION).onSnapshot(snap=>{
     snap.forEach(doc=>{
       const d=doc.data();
-      pairs[doc.id]={...pairs[doc.id],...d,type:'cloud'};
+      const local=pairs[doc.id]||{};
+      pairs[doc.id]={...local,...d,type:'cloud'};
     });
     saveLocalPairs();
     populateDropdown();
   });
 }
 
-// ================= Calculator =================
+// ===================== Calculator =====================
 function calculateLot(){
   const name=pairSelect.value;
   const risk=+document.getElementById('risk').value;
   const sl=+document.getElementById('sl').value;
   if(!pairs[name]||!risk||!sl) return;
   const p=pairs[name];
-  let v=lotType.value.includes('Point')?p.point:p.pip;
-  if(lotType.value.includes('mini')) v/=10;
-  if(lotType.value.includes('micro')) v/=100;
+  let v=0;
+  switch(lotType.value){
+    case "standardPoint": v=p.point; break;
+    case "miniPoint": v=p.point/10; break;
+    case "microPoint": v=p.point/100; break;
+    case "standardPip": v=p.pip; break;
+    case "miniPip": v=p.pip/10; break;
+    case "microPip": v=p.pip/100; break;
+  }
   const lot=risk/(sl*v+(p.commission||0));
   lotResult.innerHTML=`LotSize = ${lot.toFixed(2)}`;
   lotResult.style.display='inline-block';
@@ -221,9 +235,9 @@ function clearCalc(){
   risk.value='';sl.value='';lotResult.style.display='none';
 }
 
-// ================= Modal =================
+// ===================== Modal / Pair =====================
 function openModal(){modal.style.display='flex'}
-function closeModal(){modal.style.display='none'}
+function closeModal(){modal.style.display='none';closeSyncArea();closeDeleteEdit();}
 function saveLocalPair(){
   const name=editName.value.toUpperCase().trim();
   if(!name) return;
@@ -233,7 +247,16 @@ function saveLocalPair(){
 function openSyncArea(){document.getElementById('syncArea').style.display='block'}
 function closeSyncArea(){document.getElementById('syncArea').style.display='none'}
 function unlockCloudForSync(){
-  if(cloudPw.value==="123456") document.getElementById('syncListWrap').style.display='block';
+  if(cloudPw.value===CLOUD_PASSWORD){
+    document.getElementById('syncListWrap').style.display='block';
+    const wrap=document.getElementById('syncList');
+    wrap.innerHTML='';
+    Object.keys(pairs).forEach(n=>{
+      if(pairs[n].type==='local'){
+        wrap.innerHTML+=`<div class="pair-item"><span>${n}</span><input type="checkbox" data-name="${n}"></div>`;
+      }
+    });
+  }
 }
 function pushSelectedToCloud(){
   document.querySelectorAll('#syncList input:checked').forEach(cb=>{
@@ -246,7 +269,7 @@ function pushSelectedToCloud(){
 function openDeleteEdit(){}
 function closeDeleteEdit(){}
 
-// ================= Auth =================
+// ===================== Auth =====================
 function login(){
   auth.signInWithEmailAndPassword(email.value,password.value)
     .then(()=>{
@@ -278,17 +301,18 @@ function logout(){
   authMsg.innerText='';
 }
 
-// ===== Forgot Password FIX =====
+// ===================== Forgot Password =====================
 function forgotPassword(){
   const e=email.value.trim();
-  if(!e){authMsg.innerText="Enter email first";return;}
+  if(!e){authMsg.innerText="Enter your email first";return;}
   auth.sendPasswordResetEmail(e)
     .then(()=>authMsg.innerText="Password reset link sent to your email.")
     .catch(err=>authMsg.innerText=err.message);
 }
+
 function reloadCloud(){startCloudListener();}
 
-// ================= Events =================
+// ===================== Events =====================
 loginBtn.onclick=login;
 signupBtn.onclick=signup;
 createBtn.onclick=create;
