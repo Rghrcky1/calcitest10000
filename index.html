@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗a</h1>
+    <h1>₹@ⓖ$ 𝕱✗</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -390,9 +390,16 @@ function pushSelectedToCloud(){
 
 // ===================== Delete / Edit =====================
 function openDeleteEdit(){
-  const wrap=document.getElementById('deList');wrap.innerHTML='';
-  Object.keys(pairs).sort().forEach(name=>{
-    const div=document.createElement('div');div.className='pair-item';
+  const wrap=document.getElementById('deList');
+  wrap.innerHTML='';
+
+  Object.keys(pairs)
+    .sort((a,b)=>{
+      return (pairs[a].order ?? 0) - (pairs[b].order ?? 0);
+    })
+    .forEach(name=>{
+      const div=document.createElement('div');
+      div.className='pair-item';
     const btns=document.createElement('div');
     const del=document.createElement('button');del.className='small-btn';del.textContent='Delete';del.onclick=()=>{if(confirm("Delete "+name+"?")){delete pairs[name];saveLocalPairs();populateDropdown();openDeleteEdit();}};
     const up=document.createElement('button');up.className='small-btn';up.textContent='↑';up.onclick=()=>{moveUp(name);openDeleteEdit();};
