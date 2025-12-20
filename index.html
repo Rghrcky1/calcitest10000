@@ -111,15 +111,7 @@ button.secondary{background:#eee;color:#111}
 <div id="modal" class="modal" aria-hidden="true">
   <div class="panel" role="dialog" aria-modal="true">
     <h3>Add / Edit / Sync Pairs</h3>
-    <div id="stepUnlock">
-      <div class="small">Enter App Password</div>
-      <input id="modalAppPw" type="password" placeholder="App password">
-      <div class="row" style="margin-top:8px">
-        <button onclick="unlockModal()">Continue</button>
-        <button class="secondary" onclick="closeModal()">Close</button>
-      </div>
-      <div id="unlockErr" class="small" style="color:#b00020"></div>
-    </div>
+    
     <div id="editor" style="display:none;margin-top:12px">
       <label>Pair code (e.g. EURUSD)</label>
       <input id="editName" placeholder="PAIR (uppercase)">
@@ -195,7 +187,6 @@ const cloudApp = firebase.initializeApp({
 const db = cloudApp.firestore();
 
 // ===================== Global Vars =====================
-const APP_PASSWORD="6565";
 const CLOUD_PASSWORD="123456";
 const LOCAL_KEY="fx_pairs_v_final";
 const FIRE_COLLECTION="cloudPairs";
@@ -288,10 +279,21 @@ function clearCalc(){document.getElementById('risk').value='';document.getElemen
 // ===================== Modal & Local / Cloud =====================
 function openModal(){
   document.getElementById('modal').style.display='flex';
-  document.getElementById('stepUnlock').style.display='block';
-  document.getElementById('editor').style.display='none';
-  document.getElementById('unlockErr').innerText='';
-  document.getElementById('modalAppPw').value='';
+  document.getElementById('stepUnlock')?.remove();
+  document.getElementById('editor').style.display='block';
+
+  const sel=document.getElementById('pairSelect').value;
+  if(pairs[sel]){
+    document.getElementById('editName').value=sel;
+    document.getElementById('editPoint').value=pairs[sel].point;
+    document.getElementById('editPip').value=pairs[sel].pip;
+    document.getElementById('editCommission').value=pairs[sel].commission;
+  } else {
+    document.getElementById('editName').value='';
+    document.getElementById('editPoint').value='';
+    document.getElementById('editPip').value='';
+    document.getElementById('editCommission').value='';
+  }
 }
 
 function closeModal(){document.getElementById('modal').style.display='none';closeSyncArea();closeDeleteEdit();}
