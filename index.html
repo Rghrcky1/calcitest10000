@@ -16,11 +16,11 @@
 <style>
 :root{--accent:#007bff;--bg:#f4f6fb;--card:#fff;--muted:#666}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:var(--bg)}
+html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:var(--bg);-webkit-font-smoothing:antialiased}
 .wrap{max-width:720px;margin:48px auto;padding:12px}
 .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 8px 24px rgba(10,10,20,0.06)}
 h1{text-align:center;font-size:20px;margin-bottom:12px}
-label{display:block;margin-top:10px;font-weight:600;font-size:14px}
+label{display:block;margin-top:10px;font-weight:600;color:#222;font-size:14px}
 select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #d6dbe6;font-size:15px;margin-top:6px}
 button{background:var(--accent);color:#fff;border:0;cursor:pointer}
 button.secondary{background:#eee;color:#111}
@@ -29,10 +29,13 @@ button.secondary{background:#eee;color:#111}
 .row button{flex:1}
 .pair-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;background:#fafafa;margin-top:8px}
 .pair-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
-.small-btn{padding:3px 6px;border-radius:6px;border:0;background:#eee;font-size:12px;cursor:pointer}
-.modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999;padding:12px}
-.panel{background:#fff;padding:14px;border-radius:10px;max-width:720px;width:100%}
-#lotResult{margin-top:12px;text-align:center;font-weight:700;font-size:18px;background:#e8f0ff;padding:6px 12px;border-radius:8px;display:none}
+.pair-item:last-child{border-bottom:0}
+.small-btn{padding:3px 6px;border-radius:6px;border:0;background:#eee;color:#111;cursor:pointer;font-size:12px;margin-left:4px}
+.pair-item div{display:flex;gap:2px}
+.modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999;padding:12px;overflow-y:auto}
+.panel{background:#fff;padding:14px;border-radius:10px;max-height:90vh;overflow-y:auto;max-width:720px;width:100%}
+#lotResult{margin-top:12px;text-align:center;font-weight:700;color:#06204a;font-size:18px;background:#e8f0ff;display:inline-block;padding:6px 12px;border-radius:8px;box-shadow:0 2px 6px rgba(10,20,60,0.06)}
+@media(max-width:480px){.row{flex-direction:column}.row button{width:100%}}
 </style>
 </head>
 
@@ -41,12 +44,12 @@ button.secondary{background:#eee;color:#111}
   <div class="card">
     <h1>₹@ⓖ$ 𝕱✗</h1>
 
-    <!-- AUTH -->
+    <!-- Authentication Section -->
     <div id="authSection">
       <input id="email" type="email" placeholder="Email">
       <input id="password" type="password" placeholder="Password">
       <input id="confirmPassword" type="password" placeholder="Confirm Password" style="display:none">
-      <div class="row">
+      <div class="row" style="margin-top:10px">
         <button id="loginBtn">Login</button>
         <button id="signupBtn">Sign Up</button>
         <button id="createBtn" style="display:none">Create</button>
@@ -55,63 +58,96 @@ button.secondary{background:#eee;color:#111}
       <div id="authMsg" class="small"></div>
     </div>
 
-    <!-- CALCULATOR -->
+    <!-- Calculator Section -->
     <div id="calcSection" style="display:none">
-      <label>Pair</label>
+      <label for="pairSelect">Pair</label>
       <select id="pairSelect"></select>
 
-      <label>Lot type</label>
+      <label for="lotType">Lot type / mode</label>
       <select id="lotType">
-        <option value="standardPoint">Standard Point</option>
-        <option value="miniPoint">Mini Point</option>
-        <option value="microPoint">Micro Point</option>
-        <option value="standardPip">Standard Pip</option>
-        <option value="miniPip">Mini Pip</option>
-        <option value="microPip">Micro Pip</option>
+        <option value="standardPoint">Standard Point Value</option>
+        <option value="miniPoint">Mini Point Value</option>
+        <option value="microPoint">Micro Point Value</option>
+        <option value="standardPip">Standard Pip Value</option>
+        <option value="miniPip">Mini Pip Value</option>
+        <option value="microPip">Micro Pip Value</option>
       </select>
 
-      <label>Risk ($)</label>
+      <label for="risk">Risk ($)</label>
       <input id="risk" type="number">
 
-      <label>Stop Loss</label>
+      <label for="sl">Stop-loss (points / pips)</label>
       <input id="sl" type="number">
 
       <div class="row">
-        <button onclick="calculateLot()">Calculate</button>
+        <button onclick="calculateLot()">Calculate Lot Size</button>
         <button class="secondary" onclick="clearCalc()">Clear</button>
       </div>
 
-      <div id="lotResult"></div>
+      <div id="lotResult" style="display:none"></div>
 
       <div class="row" style="margin-top:12px">
-        <button class="secondary" onclick="openModal()">Add / Edit</button>
+        <button class="secondary" onclick="openModal()">Add / Edit / Sync</button>
         <button class="secondary" onclick="logout()">Logout</button>
+        <button class="secondary" onclick="reloadCloud()">Reload Cloud</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- MODAL -->
+<!-- Modal Editor (APP PASSWORD REMOVED) -->
 <div id="modal" class="modal">
   <div class="panel">
-    <h3>Add / Edit Pair</h3>
+    <h3>Add / Edit / Sync Pairs</h3>
 
-    <label>Pair</label>
+    <label>Pair code (e.g. EURUSD)</label>
     <input id="editName">
 
-    <label>Point</label>
+    <label>Point value (1 standard lot)</label>
     <input id="editPoint" type="number">
 
-    <label>Pip</label>
+    <label>Pip value (1 standard lot)</label>
     <input id="editPip" type="number">
 
-    <label>Commission</label>
+    <label>Commission ($ per 1 lot)</label>
     <input id="editCommission" type="number">
 
-    <div class="row">
-      <button onclick="saveLocalPair()">Save</button>
+    <div class="row" style="margin-top:8px">
+      <button onclick="saveLocalPair()">Save Local</button>
+      <button class="secondary" onclick="openSyncArea()">Sync Cloud</button>
+      <button class="secondary" onclick="openDeleteEdit()">Delete / Edit</button>
+    </div>
+
+    <div style="margin-top:8px">
       <button class="secondary" onclick="closeModal()">Close</button>
     </div>
+
+    <!-- Sync / Delete areas remain UNCHANGED -->
+    <div id="syncArea" style="display:none;margin-top:12px">
+      <div class="small">Enter Cloud Password</div>
+      <input id="cloudPw" type="password">
+      <div class="row" style="margin-top:8px">
+        <button onclick="unlockCloudForSync()">Unlock Cloud</button>
+        <button class="secondary" onclick="closeSyncArea()">Cancel</button>
+      </div>
+      <div id="syncListWrap" style="display:none;margin-top:10px">
+        <div class="small">Select LOCAL pairs to push to cloud</div>
+        <div id="syncList" class="pair-list"></div>
+        <div class="row" style="margin-top:8px">
+          <button onclick="pushSelectedToCloud()">Push Selected to Cloud</button>
+          <button class="secondary" onclick="closeSyncArea()">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="deArea" style="display:none;margin-top:12px">
+      <div class="small">Pairs (C = cloud, L = local)</div>
+      <div id="deList" class="pair-list"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="secondary" onclick="closeDeleteEdit()">Close</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -120,67 +156,40 @@ button.secondary{background:#eee;color:#111}
 const authApp = firebase.initializeApp({
   apiKey: "AIzaSyBf-D1KYMJ_b3_1Dog7AkJ8b0MST0fD_9g",
   authDomain: "auth-9bef7.firebaseapp.com",
-  projectId: "auth-9bef7"
+  projectId: "auth-9bef7",
 }, "authApp");
+const auth = authApp.auth();
 
 const cloudApp = firebase.initializeApp({
   apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
   authDomain: "lotcalci.firebaseapp.com",
-  projectId: "lotcalci"
+  projectId: "lotcalci",
 }, "cloudApp");
-
-const auth = authApp.auth();
 const db = cloudApp.firestore();
 
-// ================= Globals =================
-const LOCAL_KEY="fx_pairs_v_final";
-let pairs={};
-
-// ================= Local =================
-function loadLocalPairs(){
-  pairs = JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}");
-  populateDropdown();
-}
-function saveLocalPairs(){
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs));
-}
-function populateDropdown(){
-  const sel=document.getElementById('pairSelect');
-  sel.innerHTML='';
-  Object.keys(pairs).sort().forEach(k=>{
-    const o=document.createElement('option');
-    o.value=k;o.text=k;
-    sel.appendChild(o);
-  });
+// ================= FORGOT PASSWORD (FIXED) =================
+function forgotPassword(){
+  const e=document.getElementById('email').value.trim();
+  if(!e){
+    authMsg.innerText="Enter your email first";
+    return;
+  }
+  auth.sendPasswordResetEmail(e)
+    .then(()=>authMsg.innerText="Password reset link sent to your email.")
+    .catch(err=>authMsg.innerText=err.message);
 }
 
-// ================= Calculator =================
-function calculateLot(){
-  const p=pairs[pairSelect.value];
-  const r=+risk.value, s=+sl.value;
-  if(!p||!r||!s) return;
-  const lot=r/(s*p.point+p.commission);
-  lotResult.innerText="Lot Size = "+lot.toFixed(2);
-  lotResult.style.display='block';
-}
-function clearCalc(){
-  risk.value='';sl.value='';lotResult.style.display='none';
-}
-
-// ================= Modal =================
-function openModal(){modal.style.display='flex'}
-function closeModal(){modal.style.display='none'}
-function saveLocalPair(){
-  const n=editName.value.toUpperCase();
-  pairs[n]={point:+editPoint.value,pip:+editPip.value,commission:+editCommission.value};
-  saveLocalPairs();populateDropdown();alert("Saved");
-}
-
-// ================= Auth =================
+// ================= Login / Signup =================
 function login(){
   auth.signInWithEmailAndPassword(email.value,password.value)
-  .then(()=>{authSection.style.display='none';calcSection.style.display='block';loadLocalPairs();})
-  .catch(e=>authMsg.innerText=e.message);
+    .then(()=>{
+      authSection.style.display='none';
+      calcSection.style.display='block';
+      loadLocalPairs();
+      populateDropdown();
+      startCloudListener();
+    })
+    .catch(err=>authMsg.innerText=err.message);
 }
 
 function signup(){
@@ -190,25 +199,20 @@ function signup(){
 }
 
 function create(){
-  if(password.value!==confirmPassword.value){authMsg.innerText="Passwords do not match";return;}
+  if(password.value!==confirmPassword.value){
+    authMsg.innerText="Passwords do not match";
+    return;
+  }
   auth.createUserWithEmailAndPassword(email.value,password.value)
-  .then(()=>authMsg.innerText="Account created. Login now.")
-  .catch(e=>authMsg.innerText=e.message);
+    .then(()=>authMsg.innerText="User created. Login now.")
+    .catch(err=>authMsg.innerText=err.message);
 }
 
 function logout(){
   auth.signOut();
   calcSection.style.display='none';
   authSection.style.display='block';
-}
-
-// ===== FORGOT PASSWORD =====
-function forgotPassword(){
-  const e=email.value.trim();
-  if(!e){authMsg.innerText="Enter your email first";return;}
-  auth.sendPasswordResetEmail(e)
-    .then(()=>authMsg.innerText="Password reset link sent to your email.")
-    .catch(err=>authMsg.innerText=err.message);
+  authMsg.innerText='';
 }
 
 // ================= Events =================
