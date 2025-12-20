@@ -158,7 +158,7 @@ button.secondary{background:#eee;color:#111}
 // ===================== Firebase Projects =====================
 
 // Auth Project
-const firebaseConfig = {
+const authApp = firebase.initializeApp({
   apiKey: "AIzaSyBf-D1KYMJ_b3_1Dog7AkJ8b0MST0fD_9g",
   authDomain: "auth-9bef7.firebaseapp.com",
   projectId: "auth-9bef7",
@@ -170,7 +170,7 @@ const auth = authApp.auth();
 const authDb = authApp.firestore();
 
 // Cloud Project
-const firebaseConfig = {
+const cloudApp = firebase.initializeApp({
   apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
   authDomain: "lotcalci.firebaseapp.com",
   projectId: "lotcalci",
