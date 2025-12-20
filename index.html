@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗</h1>
+    <h1>₹@ⓖ$ 𝕱✗a</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -207,9 +207,26 @@ const defaultPairs = {};
 function loadLocalPairs(){
   const raw = localStorage.getItem(LOCAL_KEY);
   const saved = raw ? JSON.parse(raw) : {};
+
   pairs = JSON.parse(JSON.stringify(defaultPairs));
-  Object.keys(saved).forEach(k=>pairs[k]=saved[k]);
+
+  Object.keys(saved).forEach(k=>{
+    pairs[k] = saved[k];
+  });
+
+  // 🔑 INITIALIZE ORDER ONCE (CRITICAL FIX)
+  let idx = 0;
+  Object.keys(pairs)
+    .sort((a,b)=>a.localeCompare(b))
+    .forEach(k=>{
+      if(typeof pairs[k].order !== "number"){
+        pairs[k].order = idx++;
+      }
+    });
+
+  saveLocalPairs();
 }
+
 
 function saveLocalPairs(){
   localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs));
