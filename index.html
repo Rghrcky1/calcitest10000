@@ -30,21 +30,7 @@ button.secondary{background:#eee;color:#111}
 .pair-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;background:#fafafa;margin-top:8px}
 .pair-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
 .pair-item:last-child{border-bottom:0}
-.small-btn {
-  padding: 3px 6px;
-  border-radius: 6px;
-  border: 0;
-  background: #eee;
-  color: #111;
-  cursor: pointer;
-  font-size: 12px;
-  margin-left: 4px;
-}
-.pair-item div {
-  display: flex;
-  gap: 2px;
-}
-
+.small-btn{padding:6px 8px;border-radius:6px;border:0;background:#eee;color:#111;cursor:pointer}
 .modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999;padding:12px;overflow-y:auto;}
 .panel{background:#fff;padding:14px;border-radius:10px;max-height:90vh;overflow-y:auto;max-width:720px;width:100%}
 #lotResult{margin-top:12px;text-align:center;font-weight:700;color:#06204a;font-size:18px;background:#e8f0ff;display:inline-block;padding:6px 12px;border-radius:8px;box-shadow:0 2px 6px rgba(10,20,60,0.06);}
@@ -172,26 +158,26 @@ button.secondary{background:#eee;color:#111}
 // ===================== Firebase Projects =====================
 
 // Auth Project
-const firebaseConfig = {
-  apiKey: "AIzaSyBf-D1KYMJ_b3_1Dog7AkJ8b0MST0fD_9g",
-  authDomain: "auth-9bef7.firebaseapp.com",
-  projectId: "auth-9bef7",
-  storageBucket: "auth-9bef7.firebasestorage.app",
-  messagingSenderId: "27179558968",
-  appId: "1:27179558968:web:cbc4c3b162ea2114c11ecd"
-};
+const authApp = firebase.initializeApp({
+  apiKey: "PASTE_YOUR_AUTH_PROJECT_API_KEY_HERE",
+  authDomain: "PASTE_YOUR_AUTH_DOMAIN_HERE",
+  projectId: "PASTE_YOUR_AUTH_PROJECT_ID_HERE",
+  storageBucket: "PASTE_YOUR_AUTH_STORAGE_BUCKET_HERE",
+  messagingSenderId: "PASTE_YOUR_AUTH_SENDER_ID_HERE",
+  appId: "PASTE_YOUR_AUTH_APP_ID_HERE"
+}, "authApp");
 const auth = authApp.auth();
 const authDb = authApp.firestore();
 
 // Cloud Project
-const firebaseConfig = {
-  apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
-  authDomain: "lotcalci.firebaseapp.com",
-  projectId: "lotcalci",
-  storageBucket: "lotcalci.firebasestorage.app",
-  messagingSenderId: "662389905318",
-  appId: "1:662389905318:web:3b9963ab853374ee606167"
-};
+const cloudApp = firebase.initializeApp({
+  apiKey: "PASTE_YOUR_CLOUD_PROJECT_API_KEY_HERE",
+  authDomain: "PASTE_YOUR_CLOUD_AUTH_DOMAIN_HERE",
+  projectId: "PASTE_YOUR_CLOUD_PROJECT_ID_HERE",
+  storageBucket: "PASTE_YOUR_CLOUD_STORAGE_BUCKET_HERE",
+  messagingSenderId: "PASTE_YOUR_CLOUD_SENDER_ID_HERE",
+  appId: "PASTE_YOUR_CLOUD_APP_ID_HERE"
+}, "cloudApp");
 const db = cloudApp.firestore();
 
 // ===================== Global Vars =====================
@@ -388,43 +374,24 @@ function openDeleteEdit(){
   document.getElementById('deArea').style.display='block';
 }
 function closeDeleteEdit(){document.getElementById('deArea').style.display='none';}
-function getOrderedKeys(){
-  return Object.keys(pairs)
-    .map(k => ({ k, order: pairs[k].order ?? 9999 }))
-    .sort((a,b) => a.order - b.order)
-    .map(o => o.k);
-}
-
-function applyOrderFromArray(arr){
-  arr.forEach((k,i)=>{
-    pairs[k].order = i;
-  });
-}
-
 function moveUp(name){
-  const arr = getOrderedKeys();
-  const idx = arr.indexOf(name);
-  if(idx > 0){
-    [arr[idx-1], arr[idx]] = [arr[idx], arr[idx-1]];
-    applyOrderFromArray(arr);
-    saveLocalPairs();
-    populateDropdown();
-    openDeleteEdit();
-  }
+  if(!pairs[name]) return;
+  if(!pairs[name].order) pairs[name].order=0;
+  pairs[name].order-=1;
+  normalizeOrders();
+  saveLocalPairs();populateDropdown();
 }
-
 function moveDown(name){
-  const arr = getOrderedKeys();
-  const idx = arr.indexOf(name);
-  if(idx < arr.length - 1){
-    [arr[idx+1], arr[idx]] = [arr[idx], arr[idx+1]];
-    applyOrderFromArray(arr);
-    saveLocalPairs();
-    populateDropdown();
-    openDeleteEdit();
-  }
+  if(!pairs[name]) return;
+  if(!pairs[name].order) pairs[name].order=0;
+  pairs[name].order+=1;
+  normalizeOrders();
+  saveLocalPairs();populateDropdown();
 }
-
+function normalizeOrders(){
+  const arr=Object.keys(pairs).map(k=>({k,order:pairs[k].order??0})).sort((a,b)=>a.order-b.order);
+  arr.forEach((o,i)=>pairs[o.k].order=i);
+}
 
 // ===================== Login / Signup / Logout =====================
 function login(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value;auth.signInWithEmailAndPassword(e,p).then(()=>{document.getElementById('authSection').style.display='none';document.getElementById('calcSection').style.display='block';loadLocalPairs();populateDropdown();startCloudListener();}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
