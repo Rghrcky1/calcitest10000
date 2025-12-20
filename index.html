@@ -522,13 +522,44 @@ function create(){
     return;
   }
 
+  function create(){
+  const name=document.getElementById('name').value.trim();
+  const e=document.getElementById('email').value.trim();
+  const p=document.getElementById('password').value;
+  const cp=document.getElementById('confirmPassword').value;
+
+  const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if(!name){ authMsg.innerText="Enter name"; return; }
+  if(!emailRegex.test(e)){ authMsg.innerText="Enter valid email"; return; }
+  if(p.length < 6){ authMsg.innerText="Password min 6 chars"; return; }
+  if(p !== cp){ authMsg.innerText="Passwords do not match"; return; }
+
   auth.createUserWithEmailAndPassword(e,p)
     .then(cred=>{
       return cred.user.updateProfile({ displayName:name });
     })
     .then(()=>{
-      // RESET TO LOGIN SCREEN
-      document.getElementById('authMsg').innerText="Account created. Please login.";
+      return auth.signOut();   // 🔴 IMPORTANT FIX
+    })
+    .then(()=>{
+      authMsg.innerText="Account created. Please login.";
+      document.getElementById('name').style.display='none';
+      document.getElementById('confirmPassword').style.display='none';
+      document.getElementById('createBtn').style.display='none';
+      document.getElementById('signupBtn').style.display='inline-block';
+      document.getElementById('password').value='';
+      document.getElementById('confirmPassword').value='';
+    })
+    .catch(err=>{
+      if(err.code==="auth/email-already-in-use"){
+        authMsg.innerText="User already exists. Please login.";
+      } else {
+        authMsg.innerText=err.message;
+      }
+    });
+}
+
       document.getElementById('name').style.display='none';
       document.getElementById('confirmPassword').style.display='none';
       document.getElementById('createBtn').style.display='none';
