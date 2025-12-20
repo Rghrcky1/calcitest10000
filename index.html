@@ -58,9 +58,11 @@ button.secondary{background:#eee;color:#111}
 
     <!-- Authentication Section -->
     <div id="authSection">
-      <input id="email" type="email" placeholder="Email">
-      <input id="password" type="password" placeholder="Password">
-      <input id="confirmPassword" type="password" placeholder="Confirm Password" style="display:none">
+     <input id="name" type="text" placeholder="Full Name" style="display:none">
+     <input id="email" type="email" placeholder="Email">
+     <input id="password" type="password" placeholder="Password">
+     <input id="confirmPassword" type="password" placeholder="Confirm Password" style="display:none">
+
       <div class="row" style="margin-top:10px">
         <button id="loginBtn">Login</button>
         <button id="signupBtn">Sign Up</button>
@@ -468,8 +470,45 @@ function moveDown(name){
 
 // ===================== Login / Signup / Logout =====================
 function login(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value;auth.signInWithEmailAndPassword(e,p).then(()=>{document.getElementById('authSection').style.display='none';document.getElementById('calcSection').style.display='block';loadLocalPairs();populateDropdown();startCloudListener();}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
-function signup(){document.getElementById('confirmPassword').style.display='block';document.getElementById('createBtn').style.display='inline-block';document.getElementById('signupBtn').style.display='none';}
-function create(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value,cp=document.getElementById('confirmPassword').value;if(p!==cp){document.getElementById('authMsg').innerText="Passwords do not match";return;}auth.createUserWithEmailAndPassword(e,p).then(()=>{document.getElementById('authMsg').innerText="User created. Login now.";document.getElementById('confirmPassword').style.display='none';document.getElementById('createBtn').style.display='none';document.getElementById('signupBtn').style.display='inline-block';}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
+function signup(){
+  document.getElementById('name').style.display='block';
+  document.getElementById('confirmPassword').style.display='block';
+  document.getElementById('createBtn').style.display='inline-block';
+  document.getElementById('signupBtn').style.display='none';
+}
+function create(){
+  const name=document.getElementById('name').value.trim();
+  const e=document.getElementById('email').value.trim();
+  const p=document.getElementById('password').value;
+  const cp=document.getElementById('confirmPassword').value;
+
+  const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if(!name){
+    document.getElementById('authMsg').innerText="Enter your name";
+    return;
+  }
+  if(!emailRegex.test(e)){
+    document.getElementById('authMsg').innerText="Enter valid email address";
+    return;
+  }
+  if(p!==cp){
+    document.getElementById('authMsg').innerText="Passwords do not match";
+    return;
+  }
+
+  auth.createUserWithEmailAndPassword(e,p).then(cred=>{
+    return cred.user.updateProfile({ displayName:name });
+  }).then(()=>{
+    document.getElementById('authMsg').innerText="User created. Login now.";
+    document.getElementById('name').style.display='none';
+    document.getElementById('confirmPassword').style.display='none';
+    document.getElementById('createBtn').style.display='none';
+    document.getElementById('signupBtn').style.display='inline-block';
+  }).catch(err=>{
+    document.getElementById('authMsg').innerText=err.message;
+  });
+}
 function logout(){auth.signOut();document.getElementById('calcSection').style.display='none';document.getElementById('authSection').style.display='block';document.getElementById('authMsg').innerText='';}
 
 // ===================== Reload Cloud =====================
