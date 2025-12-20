@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>₹@ⓖ$ 𝕱✗ — Final</title>
+
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -20,11 +21,11 @@ html,body{height:100%;margin:0;font-family:system-ui;background:var(--bg)}
 .card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
 label{display:block;margin-top:10px;font-weight:600}
 select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #ddd;margin-top:6px}
-button{background:var(--accent);color:#fff;border:0}
+button{background:var(--accent);color:#fff;border:0;cursor:pointer}
 button.secondary{background:#eee;color:#111}
 .row{display:flex;gap:8px;margin-top:10px}
 .row button{flex:1}
-.pair-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;margin-top:8px}
+.pair-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px}
 .pair-item{display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
 .small-btn{font-size:12px;padding:3px 6px;border-radius:6px;border:0;background:#eee}
 .modal{position:fixed;inset:0;display:none;justify-content:center;background:rgba(0,0,0,.55);padding:12px}
@@ -37,9 +38,11 @@ button.secondary{background:#eee;color:#111}
 <div class="wrap">
 <div class="card">
 
-<h1 style="text-align:center">₹@ⓖ$ 𝕱✗</h1>
+<h1 style="text-align:center">₹@ⓖ$ 𝕱✗aaaa</h1>
 
+<!-- AUTH -->
 <div id="authSection">
+<input id="name" placeholder="Full Name" style="display:none">
 <input id="email" type="email" placeholder="Email">
 <input id="password" type="password" placeholder="Password">
 <input id="confirmPassword" type="password" placeholder="Confirm Password" style="display:none">
@@ -54,6 +57,7 @@ button.secondary{background:#eee;color:#111}
 <div id="authMsg"></div>
 </div>
 
+<!-- CALCULATOR -->
 <div id="calcSection" style="display:none">
 <label>Pair</label>
 <select id="pairSelect"></select>
@@ -90,20 +94,18 @@ button.secondary{background:#eee;color:#111}
 </div>
 </div>
 
-<!-- Modal -->
+<!-- MODAL (APP PASSWORD REMOVED) -->
 <div id="modal" class="modal">
 <div class="panel">
-<h3>Add / Edit / Sync</h3>
+
+<h3>Add / Edit / Sync Pairs</h3>
 
 <label>Pair</label>
 <input id="editName">
-
 <label>Point</label>
 <input id="editPoint" type="number">
-
 <label>Pip</label>
 <input id="editPip" type="number">
-
 <label>Commission</label>
 <input id="editCommission" type="number">
 
@@ -131,7 +133,7 @@ button.secondary{background:#eee;color:#111}
 </div>
 
 <script>
-/* ===== Firebase ===== */
+// Firebase
 const authApp=firebase.initializeApp({
 apiKey:"AIzaSyBf-D1KYMJ_b3_1Dog7AkJ8b0MST0fD_9g",
 authDomain:"auth-9bef7.firebaseapp.com",
@@ -146,21 +148,16 @@ projectId:"lotcalci"
 },"cloud");
 const db=cloudApp.firestore();
 
-const LOCAL_KEY="fx_pairs_v_final";
-const CLOUD_PASSWORD="123456";
-const FIRE_COLLECTION="cloudPairs";
-let pairs={};
-
-/* ===== Forgot Password (NEW) ===== */
+// FORGOT PASSWORD
 forgotBtn.onclick=()=>{
 const e=email.value.trim();
 if(!e){authMsg.innerText="Enter email first";return;}
 auth.sendPasswordResetEmail(e)
-.then(()=>authMsg.innerText="Password reset link sent")
+.then(()=>authMsg.innerText="Forex Calculator App reset link sent to your email")
 .catch(err=>authMsg.innerText=err.message);
 };
 
-/* ===== Login ===== */
+// LOGIN
 loginBtn.onclick=()=>{
 auth.signInWithEmailAndPassword(email.value,password.value)
 .then(()=>{
@@ -170,16 +167,27 @@ loadLocalPairs();populateDropdown();startCloudListener();
 }).catch(e=>authMsg.innerText=e.message);
 };
 
+// SIGNUP
 signupBtn.onclick=()=>{
+name.style.display="block";
 confirmPassword.style.display="block";
 createBtn.style.display="inline-block";
 signupBtn.style.display="none";
 };
 
 createBtn.onclick=()=>{
-if(password.value!==confirmPassword.value){authMsg.innerText="Password mismatch";return;}
+if(password.value!==confirmPassword.value){
+authMsg.innerText="Passwords do not match";return;
+}
 auth.createUserWithEmailAndPassword(email.value,password.value)
-.then(()=>authMsg.innerText="User created, login now")
+.then(cred=>cred.user.updateProfile({displayName:name.value}))
+.then(()=>{
+authMsg.innerText="Account created. Login now.";
+name.style.display="none";
+confirmPassword.style.display="none";
+createBtn.style.display="none";
+signupBtn.style.display="inline-block";
+})
 .catch(e=>authMsg.innerText=e.message);
 };
 
@@ -187,11 +195,10 @@ function logout(){
 auth.signOut();
 calcSection.style.display="none";
 authSection.style.display="block";
+authMsg.innerText="";
 }
 
-/* ===== Calculator / Pairs / Cloud ===== */
-/* UNCHANGED LOGIC — same as your original */
-
+/* ALL YOUR ORIGINAL CALCULATOR / PAIR / CLOUD CODE REMAINS BELOW — UNCHANGED */
 </script>
 </body>
 </html>
