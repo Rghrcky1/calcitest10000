@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗4</h1>
+    <h1>₹@ⓖ$ 𝕱✗l</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -76,6 +76,8 @@ button.secondary{background:#eee;color:#111}
       <div id="userList" class="pair-list"></div>
       <h3>Audit Log</h3>
       <div id="auditList" class="pair-list"></div>
+      <h4>Device Change Requests</h4>
+  <div id="deviceReqList" class="pair-list"></div>
     </div>
 
     <!-- Calculator Section -->
@@ -566,6 +568,27 @@ function loadPendingUsers(){
       });
     });
 }
+function loadDeviceRequests(){
+  const list = document.getElementById("deviceReqList");
+  list.innerHTML = "Loading...";
+
+  authDb.collection("users")
+    .where("deviceChangeReq", "==", true)
+    .get()
+    .then(snapshot=>{
+      list.innerHTML="";
+      snapshot.forEach(doc=>{
+        const d = doc.data();
+        const div = document.createElement("div");
+        div.className = "pair-item";
+        div.innerHTML = `
+          ${d.email}
+          <button onclick="approveDevice('${doc.id}')">Approve</button>
+        `;
+        list.appendChild(div);
+      });
+    });
+}
 
 function approveUser(uid){
   if(!confirm("Approve this user?")) return;
@@ -584,6 +607,21 @@ function approveUser(uid){
     loadPendingUsers();
     loadAuditLogs();
   });
+}
+function approveDevice(uid){
+  authDb.collection("users").doc(uid).update({
+    deviceId: null, // force refresh
+    deviceId: firebase.firestore.FieldValue.delete(),
+    deviceChangeReq: false,
+    requestedDeviceId: firebase.firestore.FieldValue.delete()
+  });
+
+  // Set new device
+  authDb.collection("users").doc(uid).update({
+    deviceId: authDb.collection("users").doc(uid)._delegate._key.path.segments.slice(-1)[0]
+  });
+
+  loadDeviceRequests();
 }
 
 function loadAuditLogs(){
@@ -648,15 +686,31 @@ auth.onAuthStateChanged(user=>{
       }
         // 🔐 ONE DEVICE ONLY
 if(doc.data().deviceId && doc.data().deviceId !== DEVICE_ID){
-  alert("Your account is logged in on another device.");
+
+  // If request already sent
+  if(doc.data().deviceChangeReq === true){
+    alert("Device change request already sent. Waiting for admin approval.");
+    auth.signOut();
+    return;
+  }
+
+  // Create request
+  authDb.collection("users").doc(user.uid).update({
+    deviceChangeReq: true,
+    requestedDeviceId: DEVICE_ID
+  });
+
+  alert("New device detected. Request sent to admin.");
   auth.signOut();
   return;
 }
-
 // Save / update device
-authDb.collection("users").doc(user.uid).update({
-  deviceId: DEVICE_ID
-});
+// Save device ONLY if no change request pending
+if(!doc.data().deviceChangeReq){
+  authDb.collection("users").doc(user.uid).update({
+    deviceId: DEVICE_ID
+  });
+}
       // FULLY APPROVED USER
       USER_APPROVED = true;
       document.getElementById('authSection').style.display='none';
