@@ -74,10 +74,12 @@ button.secondary{background:#eee;color:#111}
     <div id="adminSection" style="display:none;margin-top:20px">
       <h3>Admin Dashboard</h3>
       <div id="userList" class="pair-list"></div>
+      <h3>Audit Log</h3>
+      <div id="auditList" class="pair-list"></div>
     </div>
 
     <!-- Calculator Section -->
-    <div id="calcSection" style="display:none">
+    <div id="calcSection" style="display:none; pointer-events:none; opacity:0.5">
       <label for="pairSelect">Pair</label>
       <select id="pairSelect"></select>
       <label for="lotType">Lot type / mode</label>
@@ -191,6 +193,7 @@ const CLOUD_PASSWORD="123456";
 const LOCAL_KEY="fx_pairs_v_final";
 const FIRE_COLLECTION="cloudPairs";
 let pairs={};
+let USER_APPROVED = false
 
 // ===================== Load / Save Pairs =====================
 const defaultPairs = {};
@@ -250,6 +253,11 @@ function startCloudListener(){
 
 // ===================== Calculator =====================
 function calculateLot(){
+  function calculateLot(){
+  if(!USER_APPROVED){
+    alert("Waiting for admin approval");
+    return;
+  }
   const name=document.getElementById('pairSelect').value;
   const lotType=document.getElementById('lotType').value;
   const risk=parseFloat(document.getElementById('risk').value);
@@ -499,12 +507,49 @@ function loadPendingUsers(){
       });
     });
 }
-function approveUser(uid){
+function loadAuditLogs(){
+  const list = document.getElementById('auditList');
+  list.innerHTML = "Loading...";
+
+  authDb.collection("auditLogs")
+    .orderBy("approvedAt", "desc")
+    .limit(20)
+    .get()
+    .then(snapshot=>{
+      list.innerHTML = "";
+
+      if(snapshot.empty){
+        list.innerHTML = "<div class='small'>No approvals yet</div>";
+        return;
+      }
+
+      snapshot.forEach(doc=>{
+        const data = doc.data();
+        const div = document.createElement("div");
+        div.className = "pair-item";
+        div.textContent = `User: ${data.approvedUser} | Admin: ${data.adminUid} | ${data.approvedAt?.toDate() || ''}`;
+        list.appendChild(div);
+      });
+    });
+}
+
+  function approveUser(uid){
   if(!confirm("Approve this user?")) return;
 
+  const adminUid = auth.currentUser.uid;
+  const approvedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+  // Update user doc
   authDb.collection("users").doc(uid).update({
     approved: true
   }).then(()=>{
+    // Add audit log entry
+    authDb.collection("auditLogs").add({
+      approvedUser: uid,
+      adminUid: adminUid,
+      approvedAt: approvedAt
+    });
+
     loadPendingUsers();
   });
 }
@@ -571,17 +616,26 @@ document.getElementById('logoutBtn').onclick=logout;
   authDb.collection("users").doc(user.uid).get().then(doc=>{
     if(!doc.exists || doc.data().approved !== true){
       alert("Waiting for admin approval");
+      USER_APPROVED = false;
       auth.signOut();
       return;
     }
 
-   // APPROVED USER
+ // APPROVED USER
+   
+USER_APPROVED = true;
+
 authSection.style.display = 'none';
 calcSection.style.display = 'block';
+    
+const calc = document.getElementById('calcSection');
+calc.style.pointerEvents = "auto";
+calc.style.opacity = "1"
 
 if(doc.data().role === "admin"){
   document.getElementById('adminSection').style.display = 'block';
   loadPendingUsers();
+  loadAuditLogs();
 }else{
   document.getElementById('adminSection').style.display = 'none';
 }
