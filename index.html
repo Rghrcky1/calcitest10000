@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗112</h1>
+    <h1>₹@ⓖ$ 𝕱✗333</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -120,8 +120,7 @@ button.secondary{background:#eee;color:#111}
       <input id="editCommission" type="number" placeholder="commission">
     <div class="row" style="margin-top:8px">
   <button onclick="saveLocalPair()">Save Local</button>
-  <button class="secondary" onclick="openSyncArea()">Sync Cloud</button>
-  <button class="secondary" onclick="openDeleteEdit()">Delete / Edit</button>
+   <button class="secondary" onclick="openDeleteEdit()">Delete / Edit</button>
 </div>
 
 <div class="row" style="margin-top:8px">
@@ -164,6 +163,10 @@ button.secondary{background:#eee;color:#111}
 <!-- Admin Dashboard -->
 <div id="adminPanel" style="display:none;margin-top:12px">
   <h3>Pending Approvals</h3>
+  <div class="row" style="margin-top:8px">
+  <button onclick="openSyncCloudAdmin()">Sync Cloud</button>
+</div>
+
   <div id="userList" class="pair-list"></div>
   <div class="row" style="margin-top:8px">
     <button class="secondary" onclick="closeAdmin()">Close</button>
@@ -366,7 +369,7 @@ let cloudUnlocked=false;
 function openSyncArea(){
   cloudUnlocked=false;
   document.getElementById('syncArea').style.display='block';
-  document.getElementById('cloudPw').value='';
+
   document.getElementById('syncListWrap').style.display='none';
   populateLocalSyncList();
 }
