@@ -54,16 +54,13 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗b</h1>
+    <h1>₹@ⓖ$ 𝕱✗</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
-     <input id="name" type="text" placeholder="Full Name" style="display:none">
-     <input id="email" type="email" placeholder="Email">
-
-     <input id="password" type="password" placeholder="Password">
-     <input id="confirmPassword" type="password" placeholder="Confirm Password" style="display:none">
-
+      <input id="email" type="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Password">
+      <input id="confirmPassword" type="password" placeholder="Confirm Password" style="display:none">
       <div class="row" style="margin-top:10px">
         <button id="loginBtn">Login</button>
         <button id="signupBtn">Sign Up</button>
@@ -114,7 +111,15 @@ button.secondary{background:#eee;color:#111}
 <div id="modal" class="modal" aria-hidden="true">
   <div class="panel" role="dialog" aria-modal="true">
     <h3>Add / Edit / Sync Pairs</h3>
-    
+    <div id="stepUnlock">
+      <div class="small">Enter App Password</div>
+      <input id="modalAppPw" type="password" placeholder="App password">
+      <div class="row" style="margin-top:8px">
+        <button onclick="unlockModal()">Continue</button>
+        <button class="secondary" onclick="closeModal()">Close</button>
+      </div>
+      <div id="unlockErr" class="small" style="color:#b00020"></div>
+    </div>
     <div id="editor" style="display:none;margin-top:12px">
       <label>Pair code (e.g. EURUSD)</label>
       <input id="editName" placeholder="PAIR (uppercase)">
@@ -190,6 +195,7 @@ const cloudApp = firebase.initializeApp({
 const db = cloudApp.firestore();
 
 // ===================== Global Vars =====================
+const APP_PASSWORD="6565";
 const CLOUD_PASSWORD="123456";
 const LOCAL_KEY="fx_pairs_v_final";
 const FIRE_COLLECTION="cloudPairs";
@@ -201,9 +207,26 @@ const defaultPairs = {};
 function loadLocalPairs(){
   const raw = localStorage.getItem(LOCAL_KEY);
   const saved = raw ? JSON.parse(raw) : {};
+
   pairs = JSON.parse(JSON.stringify(defaultPairs));
-  Object.keys(saved).forEach(k=>pairs[k]=saved[k]);
+
+  Object.keys(saved).forEach(k=>{
+    pairs[k] = saved[k];
+  });
+
+  // 🔑 INITIALIZE ORDER ONCE (CRITICAL FIX)
+  let idx = 0;
+  Object.keys(pairs)
+    .sort((a,b)=>a.localeCompare(b))
+    .forEach(k=>{
+      if(typeof pairs[k].order !== "number"){
+        pairs[k].order = idx++;
+      }
+    });
+
+  saveLocalPairs();
 }
+
 
 function saveLocalPairs(){
   localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs));
@@ -282,21 +305,10 @@ function clearCalc(){document.getElementById('risk').value='';document.getElemen
 // ===================== Modal & Local / Cloud =====================
 function openModal(){
   document.getElementById('modal').style.display='flex';
-  document.getElementById('stepUnlock')?.remove();
-  document.getElementById('editor').style.display='block';
-
-  const sel=document.getElementById('pairSelect').value;
-  if(pairs[sel]){
-    document.getElementById('editName').value=sel;
-    document.getElementById('editPoint').value=pairs[sel].point;
-    document.getElementById('editPip').value=pairs[sel].pip;
-    document.getElementById('editCommission').value=pairs[sel].commission;
-  } else {
-    document.getElementById('editName').value='';
-    document.getElementById('editPoint').value='';
-    document.getElementById('editPip').value='';
-    document.getElementById('editCommission').value='';
-  }
+  document.getElementById('stepUnlock').style.display='block';
+  document.getElementById('editor').style.display='none';
+  document.getElementById('unlockErr').innerText='';
+  document.getElementById('modalAppPw').value='';
 }
 
 function closeModal(){document.getElementById('modal').style.display='none';closeSyncArea();closeDeleteEdit();}
@@ -326,17 +338,11 @@ function saveLocalPair(){
   const pip=parseFloat(document.getElementById('editPip').value);
   const commission=parseFloat(document.getElementById('editCommission').value);
   if(!name||isNaN(point)||isNaN(pip)||isNaN(commission)){alert("Enter valid name, point, pip and commission.");return;}
-
-  const order = typeof pairs[name]?.order === 'number'
-    ? pairs[name].order
-    : Object.keys(pairs).length;
-
-  const type = pairs[name]?.type === 'cloud' ? 'cloud' : 'local';
-
-  pairs[name]={ point, pip, commission, type, order };
-
-  saveLocalPairs();
-  populateDropdown();
+  const existing=pairs[name];
+  const type=existing&&existing.type==='cloud'?'cloud':'local';
+  pairs[name]={point,pip,commission,type};
+  saveLocalPairs();populateDropdown();
+  alert(name+" saved locally.");
 }
 
 // ===================== Cloud Sync =====================
@@ -387,53 +393,28 @@ function openDeleteEdit(){
   const wrap=document.getElementById('deList');
   wrap.innerHTML='';
 
-  getOrderedKeys().forEach(name=>{
-    const div=document.createElement('div');
-    div.className='pair-item';
-
+  Object.keys(pairs)
+    .sort((a,b)=>{
+      return (pairs[a].order ?? 0) - (pairs[b].order ?? 0);
+    })
+    .forEach(name=>{
+      const div=document.createElement('div');
+      div.className='pair-item';
     const btns=document.createElement('div');
-
-    const del=document.createElement('button');
-    del.className='small-btn';
-    del.textContent='Delete';
-    del.onclick=()=>{
-      if(confirm("Delete "+name+"?")){
-        delete pairs[name];
-        saveLocalPairs();
-        populateDropdown();
-        openDeleteEdit();
-      }
-    };
-
-    const up=document.createElement('button');
-    up.className='small-btn';
-    up.textContent='↑';
-    up.onclick=()=>moveUp(name);
-
-    const down=document.createElement('button');
-    down.className='small-btn';
-    down.textContent='↓';
-    down.onclick=()=>moveDown(name);
-
-    btns.appendChild(del);
-    btns.appendChild(up);
-    btns.appendChild(down);
-
+    const del=document.createElement('button');del.className='small-btn';del.textContent='Delete';del.onclick=()=>{if(confirm("Delete "+name+"?")){delete pairs[name];saveLocalPairs();populateDropdown();openDeleteEdit();}};
+    const up=document.createElement('button');up.className='small-btn';up.textContent='↑';up.onclick=()=>{moveUp(name);openDeleteEdit();};
+    const down=document.createElement('button');down.className='small-btn';down.textContent='↓';down.onclick=()=>{moveDown(name);openDeleteEdit();};
+    btns.appendChild(del);btns.appendChild(up);btns.appendChild(down);
     div.innerHTML=`<span>${name} (${pairs[name].type==='cloud'?'C':'L'})</span>`;
     div.appendChild(btns);
     wrap.appendChild(div);
   });
-
   document.getElementById('deArea').style.display='block';
 }
-
 function closeDeleteEdit(){document.getElementById('deArea').style.display='none';}
 function getOrderedKeys(){
   return Object.keys(pairs)
-    .map((k,i) => ({
-      k,
-      order: typeof pairs[k].order === 'number' ? pairs[k].order : i
-    }))
+    .map(k => ({ k, order: pairs[k].order ?? 9999 }))
     .sort((a,b) => a.order - b.order)
     .map(o => o.k);
 }
@@ -470,93 +451,9 @@ function moveDown(name){
 
 
 // ===================== Login / Signup / Logout =====================
+function login(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value;auth.signInWithEmailAndPassword(e,p).then(()=>{document.getElementById('authSection').style.display='none';document.getElementById('calcSection').style.display='block';loadLocalPairs();populateDropdown();startCloudListener();}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
+function signup(){document.getElementById('confirmPassword').style.display='block';document.getElementById('createBtn').style.display='inline-block';document.getElementById('signupBtn').style.display='none';}
+function create(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value,cp=document.getElementById('confirmPassword').value;if(p!==cp){document.getElementById('authMsg').innerText="Passwords do not match";return;}auth.createUserWithEmailAndPassword(e,p).then(()=>{document.getElementById('authMsg').innerText="User created. Login now.";document.getElementById('confirmPassword').style.display='none';document.getElementById('createBtn').style.display='none';document.getElementById('signupBtn').style.display='inline-block';}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
+function logout(){auth.signOut();document.getElementById('calcSection').style.display='none';document.getElementById('authSection').style.display='block';document.getElementById('authMsg').innerText='';}
 
-function login(){
-  const e = email.value.trim();
-  const p = password.value;
-  const authMsg = document.getElementById('authMsg');
-
-  auth.signInWithEmailAndPassword(e,p)
-    .then(cred=>{
-      if(!cred.user.emailVerified){
-        auth.signOut();
-        authMsg.innerText = "Verify your email before login.";
-        return;
-      }
-
-      authSection.style.display='none';
-      calcSection.style.display='block';
-      loadLocalPairs();
-      populateDropdown();
-      startCloudListener();
-    })
-    .catch(()=>{
-      authMsg.innerText="Invalid email or password";
-    });
-}
-
-function signup(){
-  name.style.display='block';
-  confirmPassword.style.display='block';
-  createBtn.style.display='inline-block';
-  signupBtn.style.display='none';
-}
-
-function create(){
-  const nameVal = name.value.trim();
-  const e = email.value.trim();
-  const p = password.value;
-  const cp = confirmPassword.value;
-  const authMsg = document.getElementById('authMsg');
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if(!nameVal){ authMsg.innerText="Enter name"; return; }
-  if(!emailRegex.test(e)){ authMsg.innerText="Enter valid email"; return; }
-  if(p.length < 6){ authMsg.innerText="Password min 6 chars"; return; }
-  if(p !== cp){ authMsg.innerText="Passwords do not match"; return; }
-
-  auth.createUserWithEmailAndPassword(e,p)
-    .then(cred=>{
-      return cred.user.updateProfile({displayName:nameVal})
-        .then(()=>cred.user.sendEmailVerification());
-    })
-    .then(()=>{
-      auth.signOut();
-      authMsg.innerText="Verification email sent. Verify then login.";
-
-      name.style.display='none';
-      confirmPassword.style.display='none';
-      createBtn.style.display='none';
-      signupBtn.style.display='inline-block';
-
-      password.value='';
-      confirmPassword.value='';
-    })
-    .catch(err=>{
-      if(err.code==="auth/email-already-in-use"){
-        authMsg.innerText="User already exists. Login instead.";
-      } else {
-        authMsg.innerText=err.message;
-      }
-    });
-}
-
-function logout(){
-  auth.signOut();
-  calcSection.style.display='none';
-  authSection.style.display='block';
-  authMsg.innerText='';
-}
-// ===================== Reload Cloud =====================
-function reloadCloud(){startCloudListener();}
- 
-// ===================== Event Listeners =====================
-document.getElementById('loginBtn').onclick=login;
-document.getElementById('signupBtn').onclick=signup;
-document.getElementById('createBtn').onclick=create;
-document.getElementById('logoutBtn').onclick=logout;
-
-</script>
-</body>
-</html>
+// =================
