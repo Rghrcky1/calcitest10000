@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗2</h1>
+    <h1>₹@ⓖ$ 𝕱✗3</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -194,6 +194,17 @@ const LOCAL_KEY="fx_pairs_v_final";
 const FIRE_COLLECTION="cloudPairs";
 let pairs={};
 let USER_APPROVED = false;
+  
+// ================= DEVICE ID =================
+function getDeviceId(){
+  let id = localStorage.getItem("DEVICE_ID");
+  if(!id){
+    id = "dev_" + Math.random().toString(36).substr(2) + Date.now();
+    localStorage.setItem("DEVICE_ID", id);
+  }
+  return id;
+}
+const DEVICE_ID = getDeviceId();
 
 // ===================== Load / Save Pairs =====================
 const defaultPairs = {};
@@ -511,8 +522,15 @@ auth.createUserWithEmailAndPassword(e,p)
 }
 
 function logout(){
+  if(auth.currentUser){
+    authDb.collection("users").doc(auth.currentUser.uid)
+      .update({
+        deviceId: firebase.firestore.FieldValue.delete()
+      });
+  }
   auth.signOut();
 }
+
 
 // ===================== Admin functions =====================
 function loadPendingUsers(){
@@ -628,7 +646,17 @@ auth.onAuthStateChanged(user=>{
         auth.signOut();
         return;
       }
+        // 🔐 ONE DEVICE ONLY
+if(doc.data().deviceId && doc.data().deviceId !== DEVICE_ID){
+  alert("Your account is logged in on another device.");
+  auth.signOut();
+  return;
+}
 
+// Save / update device
+authDb.collection("users").doc(user.uid).update({
+  deviceId: DEVICE_ID
+});
       // FULLY APPROVED USER
       USER_APPROVED = true;
       document.getElementById('authSection').style.display='none';
@@ -649,6 +677,16 @@ auth.onAuthStateChanged(user=>{
       loadLocalPairs();
       populateDropdown();
       startCloudListener();
+      // 🔁 ONE-DEVICE LIVE ENFORCEMENT (ONLY HERE)
+authDb.collection("users").doc(user.uid)
+  .onSnapshot(docSnap=>{
+    if(!docSnap.exists) return;
+
+    if(docSnap.data().deviceId !== DEVICE_ID){
+      alert("You were logged out because this account was used on another device.");
+      auth.signOut();
+    }
+
     });
   });
 
