@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗b</h1>
+    <h1>₹@ⓖ$ 𝕱✗555</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -209,8 +209,8 @@ const db = cloudApp.firestore();
 
 // ===================== Global Vars =====================
 const CLOUD_PASSWORD="123456";
-  const ADMIN_PASSWORD = "121212";
-const LOCAL_KEY="fx_pairs_v_final";
+  
+  const LOCAL_KEY="fx_pairs_v_final";
 const FIRE_COLLECTION="cloudPairs";
   
 let pairs={};
@@ -310,7 +310,7 @@ function openModal(){
   document.getElementById('modal').style.display='flex';
   document.getElementById('stepUnlock')?.remove();
   document.getElementById('editor').style.display='block';
-
+  document.getElementById('adminPanelBtn').style.display = 'none';
   const sel=document.getElementById('pairSelect').value;
   if(pairs[sel]){
     document.getElementById('editName').value=sel;
@@ -323,9 +323,23 @@ function openModal(){
     document.getElementById('editPip').value='';
     document.getElementById('editCommission').value='';
   }
+  if(window.IS_ADMIN){
+    document.getElementById('adminPanelBtn').style.display = 'block';
+  }
 }
 
-function closeModal(){document.getElementById('modal').style.display='none';closeSyncArea();closeDeleteEdit();}
+function closeModal(){
+  document.getElementById('modal').style.display='none';
+
+  closeSyncArea();
+  closeDeleteEdit();
+
+  // reset admin modal state
+  document.getElementById('adminGate').style.display = 'none';
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('adminPw').value = '';
+}
+
 
 // ===================== Save / Sync / Delete =====================
 function saveLocalPair(){
@@ -594,14 +608,20 @@ function openAdminGate(){
 
 function unlockAdmin(){
   const pw = document.getElementById('adminPw').value.trim();
-  if(pw !== ADMIN_PASSWORD){
-    alert("Wrong admin password");
-    return;
-  }
-  document.getElementById('adminGate').style.display = 'none';
-  document.getElementById('adminPanel').style.display = 'block';
-  loadPendingUsers();
+  if(!pw) return;
+
+  authDb.collection("config").doc("admin").get().then(doc=>{
+    if(!doc.exists || doc.data().password !== pw){
+      alert("Wrong admin password");
+      return;
+    }
+
+    document.getElementById('adminGate').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    loadPendingUsers();
+  });
 }
+
 
 function closeAdmin(){
   document.getElementById('adminGate').style.display = 'none';
@@ -659,9 +679,12 @@ auth.onAuthStateChanged(user=>{
       calc.style.pointerEvents = "auto";
       calc.style.opacity = "1";
 
-     if(doc.data().role === "admin"){
-  document.getElementById('adminPanelBtn').style.display = 'block';
+  if(doc.data().role === "admin"){
+  window.IS_ADMIN = true;
+} else {
+  window.IS_ADMIN = false;
 }
+
  else {
         document.getElementById('adminSection').style.display='none';
       }
