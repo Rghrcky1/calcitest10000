@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗1111</h1>
+    <h1>₹@ⓖ$ 𝕱✗112</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -611,6 +611,10 @@ function unlockAdmin(){
   if(!pw) return;
 
   authDb.collection("config").doc("admin").get().then(doc=>{
+    console.log("ADMIN DOC EXISTS:", doc.exists);
+    console.log("ADMIN DATA:", doc.data());
+    console.log("ENTERED PW:", pw);
+
     if(!doc.exists || doc.data().password !== pw){
       alert("Wrong admin password");
       return;
@@ -619,8 +623,9 @@ function unlockAdmin(){
     document.getElementById('adminGate').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'block';
     loadPendingUsers();
-  }
+  });
 }
+
 
 
 function closeAdmin(){
