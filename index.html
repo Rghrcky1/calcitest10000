@@ -467,11 +467,20 @@ function moveDown(name){
 
 
 // ===================== Login / Signup / Logout =====================
-function login(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value;auth.signInWithEmailAndPassword(e,p).then(()=>{document.getElementById('authSection').style.display='none';document.getElementById('calcSection').style.display='block';loadLocalPairs();populateDropdown();startCloudListener();}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
+function login(){
+  const e=document.getElementById('email').value.trim();
+  const p=document.getElementById('password').value;
+  auth.signInWithEmailAndPassword(e,p)
+    .catch(err=>{
+      document.getElementById('authMsg').innerText = err.message;
+    });
+}
+
 function signup(){document.getElementById('confirmPassword').style.display='block';document.getElementById('createBtn').style.display='inline-block';document.getElementById('signupBtn').style.display='none';}
 function create(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value,cp=document.getElementById('confirmPassword').value;if(p!==cp){document.getElementById('authMsg').innerText="Passwords do not match";return;}auth.createUserWithEmailAndPassword(e,p).then(()=>{document.getElementById('authMsg').innerText="User created. Login now.";document.getElementById('confirmPassword').style.display='none';document.getElementById('createBtn').style.display='none';document.getElementById('signupBtn').style.display='inline-block';}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
-function logout(){auth.signOut();document.getElementById('calcSection').style.display='none';document.getElementById('authSection').style.display='block';document.getElementById('authMsg').innerText='';}
-
+function logout(){
+  auth.signOut();
+}
 // ===================== Reload Cloud =====================
 function reloadCloud(){startCloudListener();}
  
@@ -480,6 +489,20 @@ document.getElementById('loginBtn').onclick=login;
 document.getElementById('signupBtn').onclick=signup;
 document.getElementById('createBtn').onclick=create;
 document.getElementById('logoutBtn').onclick=logout;
+
+  auth.onAuthStateChanged(user=>{
+  if(user){
+    document.getElementById('authSection').style.display='none';
+    document.getElementById('calcSection').style.display='block';
+
+    loadLocalPairs();
+    populateDropdown();
+    startCloudListener();
+  }else{
+    document.getElementById('calcSection').style.display='none';
+    document.getElementById('authSection').style.display='block';
+  }
+});
 
 </script>
 </body>
