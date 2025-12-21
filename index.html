@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗</h1>
+    <h1>₹@ⓖ$ 𝕱✗123</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -609,57 +609,72 @@ auth.onAuthStateChanged(user => {
     return;
   }
 
-  // 🔄 Refresh user to get latest email verification state
-  user.reload().then(() => {
+  user.reload()
+    .then(() => {
 
-    // ❌ Email NOT verified
-    if (!user.emailVerified) {
-      alert("Please verify your email first. Check your inbox.");
+      const userRef = authDb.collection("users").doc(user.uid);
+
+      userRef.get().then(doc => {
+        if (!doc.exists) {
+          auth.signOut();
+          return;
+        }
+
+        const data = doc.data();
+
+        // 🟡 BACKWARD COMPATIBILITY FIX
+        // If field does not exist, treat as verified (old users)
+        const firestoreVerified =
+          data.emailVerified === undefined ? true : data.emailVerified;
+
+        // ❌ Email not verified (NEW USERS ONLY)
+        if (!user.emailVerified && firestoreVerified === false) {
+          alert("Please verify your email first. Check your inbox.");
+          auth.signOut();
+          return;
+        }
+
+        // ✅ Sync Firestore once email is verified
+        if (user.emailVerified && data.emailVerified !== true) {
+          userRef.update({ emailVerified: true });
+        }
+
+        // ❌ Waiting for admin approval
+        if (data.approved !== true) {
+          alert("Email verified. Waiting for admin approval.");
+          auth.signOut();
+          return;
+        }
+
+        // ✅ FULLY APPROVED USER
+        USER_APPROVED = true;
+
+        document.getElementById('authSection').style.display = 'none';
+        document.getElementById('calcSection').style.display = 'block';
+
+        const calc = document.getElementById('calcSection');
+        calc.style.pointerEvents = "auto";
+        calc.style.opacity = "1";
+
+        if (data.role === "admin") {
+          document.getElementById('adminSection').style.display = 'block';
+          loadPendingUsers();
+          loadAuditLogs();
+        } else {
+          document.getElementById('adminSection').style.display = 'none';
+        }
+
+        loadLocalPairs();
+        populateDropdown();
+        startCloudListener();
+      });
+    })
+    .catch(err => {
+      console.error("Auth reload error:", err);
       auth.signOut();
-      return;
-    }
-
-    const userRef = authDb.collection("users").doc(user.uid);
-
-    userRef.get().then(doc => {
-      if (!doc.exists) return;
-
-      // ✅ Mark email verified in Firestore (one-time)
-      if (doc.data().emailVerified !== true) {
-        userRef.update({ emailVerified: true });
-      }
-
-      // ❌ Waiting for admin approval
-      if (doc.data().approved !== true) {
-        alert("Email verified. Waiting for admin approval.");
-        auth.signOut();
-        return;
-      }
-
-      // ✅ Fully approved user
-      USER_APPROVED = true;
-
-      document.getElementById('authSection').style.display = 'none';
-      document.getElementById('calcSection').style.display = 'block';
-
-      const calc = document.getElementById('calcSection');
-      calc.style.pointerEvents = "auto";
-      calc.style.opacity = "1";
-
-      if (doc.data().role === "admin") {
-        document.getElementById('adminSection').style.display = 'block';
-        loadPendingUsers();
-        loadAuditLogs();
-      } else {
-        document.getElementById('adminSection').style.display = 'none';
-      }
-
-      loadLocalPairs();
-      populateDropdown();
-      startCloudListener();
     });
-  });
 });
+
 
 // ===================== Event Listeners =====================
 document.getElementById('loginBtn').onclick=login;
