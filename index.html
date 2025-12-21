@@ -477,7 +477,34 @@ function login(){
 }
 
 function signup(){document.getElementById('confirmPassword').style.display='block';document.getElementById('createBtn').style.display='inline-block';document.getElementById('signupBtn').style.display='none';}
-function create(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value,cp=document.getElementById('confirmPassword').value;if(p!==cp){document.getElementById('authMsg').innerText="Passwords do not match";return;}auth.createUserWithEmailAndPassword(e,p).then(()=>{document.getElementById('authMsg').innerText="User created. Login now.";document.getElementById('confirmPassword').style.display='none';document.getElementById('createBtn').style.display='none';document.getElementById('signupBtn').style.display='inline-block';}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
+function create(){
+  const e = document.getElementById('email').value.trim();
+  const p = document.getElementById('password').value;
+  const cp = document.getElementById('confirmPassword').value;
+
+  if(p !== cp){
+    document.getElementById('authMsg').innerText = "Passwords do not match";
+    return;
+  }
+
+  auth.createUserWithEmailAndPassword(e,p)
+    .then(cred=>{
+      return authDb.collection("users").doc(cred.user.uid).set({
+        email: e,
+        approved: false,
+        role: "user",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    })
+    .then(()=>{
+      document.getElementById('authMsg').innerText =
+        "Account created. Waiting for admin approval.";
+    })
+    .catch(err=>{
+      document.getElementById('authMsg').innerText = err.message;
+    });
+}
+
 function logout(){
   auth.signOut();
 }
@@ -491,18 +518,29 @@ document.getElementById('createBtn').onclick=create;
 document.getElementById('logoutBtn').onclick=logout;
 
   auth.onAuthStateChanged(user=>{
-  if(user){
-    document.getElementById('authSection').style.display='none';
-    document.getElementById('calcSection').style.display='block';
+  if(!user){
+    calcSection.style.display='none';
+    authSection.style.display='block';
+    return;
+  }
+
+  authDb.collection("users").doc(user.uid).get().then(doc=>{
+    if(!doc.exists || doc.data().approved !== true){
+      alert("Waiting for admin approval");
+      auth.signOut();
+      return;
+    }
+
+    // APPROVED USER
+    authSection.style.display='none';
+    calcSection.style.display='block';
 
     loadLocalPairs();
     populateDropdown();
     startCloudListener();
-  }else{
-    document.getElementById('calcSection').style.display='none';
-    document.getElementById('authSection').style.display='block';
-  }
+  });
 });
+
 
 </script>
 </body>
