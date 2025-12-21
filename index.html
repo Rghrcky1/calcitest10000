@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗1</h1>
+    <h1>₹@ⓖ$ 𝕱✗2</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -464,6 +464,50 @@ function moveDown(name){
     openDeleteEdit();
   }
 }
+function loadPendingUsers(){
+  const list = document.getElementById('userList');
+  list.innerHTML = "Loading...";
+
+  authDb.collection("users")
+    .where("approved", "==", false)
+    .get()
+    .then(snapshot=>{
+      list.innerHTML = "";
+
+      if(snapshot.empty){
+        list.innerHTML = "<div class='small'>No pending users</div>";
+        return;
+      }
+
+      snapshot.forEach(doc=>{
+        const data = doc.data();
+
+        const div = document.createElement("div");
+        div.className = "pair-item";
+
+        const email = document.createElement("span");
+        email.textContent = data.email || doc.id;
+
+        const btn = document.createElement("button");
+        btn.textContent = "Approve";
+        btn.className = "small-btn";
+        btn.onclick = ()=>approveUser(doc.id);
+
+        div.appendChild(email);
+        div.appendChild(btn);
+        list.appendChild(div);
+      });
+    });
+}
+function approveUser(uid){
+  if(!confirm("Approve this user?")) return;
+
+  authDb.collection("users").doc(uid).update({
+    approved: true
+  }).then(()=>{
+    loadPendingUsers();
+  });
+}
 
 
 // ===================== Login / Signup / Logout =====================
@@ -531,13 +575,21 @@ document.getElementById('logoutBtn').onclick=logout;
       return;
     }
 
-    // APPROVED USER
-    authSection.style.display='none';
-    calcSection.style.display='block';
+   // APPROVED USER
+authSection.style.display = 'none';
+calcSection.style.display = 'block';
 
-    loadLocalPairs();
-    populateDropdown();
-    startCloudListener();
+if(doc.data().role === "admin"){
+  document.getElementById('adminSection').style.display = 'block';
+  loadPendingUsers();
+}else{
+  document.getElementById('adminSection').style.display = 'none';
+}
+
+loadLocalPairs();
+populateDropdown();
+startCloudListener();
+
   });
 });
 
