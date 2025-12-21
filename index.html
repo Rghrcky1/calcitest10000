@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>₹@ⓖ$ 𝕱✗ttt — Final</title>
+<title>₹@ⓖ$ 𝕱✗ — Final</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗2</h1>
+    <h1>₹@ⓖ$ 𝕱✗123</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -193,7 +193,7 @@ const CLOUD_PASSWORD="123456";
 const LOCAL_KEY="fx_pairs_v_final";
 const FIRE_COLLECTION="cloudPairs";
 let pairs={};
-let USER_APPROVED = false
+let USER_APPROVED = false;
 
 // ===================== Load / Save Pairs =====================
 const defaultPairs = {};
@@ -253,11 +253,11 @@ function startCloudListener(){
 
 // ===================== Calculator =====================
 function calculateLot(){
-  function calculateLot(){
   if(!USER_APPROVED){
     alert("Waiting for admin approval");
     return;
   }
+
   const name=document.getElementById('pairSelect').value;
   const lotType=document.getElementById('lotType').value;
   const risk=parseFloat(document.getElementById('risk').value);
@@ -306,24 +306,6 @@ function openModal(){
 
 function closeModal(){document.getElementById('modal').style.display='none';closeSyncArea();closeDeleteEdit();}
 
-function unlockModal(){
-  const v=(document.getElementById('modalAppPw').value||'').trim();
-  const stored=localStorage.getItem(LOCAL_KEY+"_pw")||APP_PASSWORD;
-  if(v===stored){
-    document.getElementById('stepUnlock').style.display='none';
-    document.getElementById('editor').style.display='block';
-    const sel=document.getElementById('pairSelect').value;
-    if(pairs[sel]){
-      document.getElementById('editName').value=sel;
-      document.getElementById('editPoint').value=pairs[sel].point;
-      document.getElementById('editPip').value=pairs[sel].pip;
-      document.getElementById('editCommission').value=pairs[sel].commission;
-    } else {
-      document.getElementById('editName').value='';document.getElementById('editPoint').value='';document.getElementById('editPip').value='';document.getElementById('editCommission').value='';
-    }
-  } else document.getElementById('unlockErr').innerText="Wrong app password.";
-}
-
 // ===================== Save / Sync / Delete =====================
 function saveLocalPair(){
   const name=(document.getElementById('editName').value||'').toUpperCase().trim();
@@ -367,8 +349,10 @@ function unlockCloudForSync(){
   const pw=document.getElementById('cloudPw').value.trim();
   if(pw===CLOUD_PASSWORD){
     cloudUnlocked=true;
-    document.getElementById('syncListWrap').style.display='block';
-  } else {alert("Wrong cloud password.");}
+       document.getElementById('syncListWrap').style.display='block';
+  } else {
+    alert("Wrong cloud password.");
+  }
 }
 function pushSelectedToCloud(){
   if(!cloudUnlocked) {alert("Unlock cloud first."); return;}
@@ -383,7 +367,8 @@ function pushSelectedToCloud(){
     });
     pairs[name].type='cloud';
   });
-  saveLocalPairs();populateDropdown();
+  saveLocalPairs();
+  populateDropdown();
   alert("Selected pairs pushed to cloud.");
 }
 
@@ -442,13 +427,11 @@ function getOrderedKeys(){
     .sort((a,b) => a.order - b.order)
     .map(o => o.k);
 }
-
 function applyOrderFromArray(arr){
   arr.forEach((k,i)=>{
     pairs[k].order = i;
   });
 }
-
 function moveUp(name){
   const arr = getOrderedKeys();
   const idx = arr.indexOf(name);
@@ -460,7 +443,6 @@ function moveUp(name){
     openDeleteEdit();
   }
 }
-
 function moveDown(name){
   const arr = getOrderedKeys();
   const idx = arr.indexOf(name);
@@ -472,88 +454,6 @@ function moveDown(name){
     openDeleteEdit();
   }
 }
-function loadPendingUsers(){
-  const list = document.getElementById('userList');
-  list.innerHTML = "Loading...";
-
-  authDb.collection("users")
-    .where("approved", "==", false)
-    .get()
-    .then(snapshot=>{
-      list.innerHTML = "";
-
-      if(snapshot.empty){
-        list.innerHTML = "<div class='small'>No pending users</div>";
-        return;
-      }
-
-      snapshot.forEach(doc=>{
-        const data = doc.data();
-
-        const div = document.createElement("div");
-        div.className = "pair-item";
-
-        const email = document.createElement("span");
-        email.textContent = data.email || doc.id;
-
-        const btn = document.createElement("button");
-        btn.textContent = "Approve";
-        btn.className = "small-btn";
-        btn.onclick = ()=>approveUser(doc.id);
-
-        div.appendChild(email);
-        div.appendChild(btn);
-        list.appendChild(div);
-      });
-    });
-}
-function loadAuditLogs(){
-  const list = document.getElementById('auditList');
-  list.innerHTML = "Loading...";
-
-  authDb.collection("auditLogs")
-    .orderBy("approvedAt", "desc")
-    .limit(20)
-    .get()
-    .then(snapshot=>{
-      list.innerHTML = "";
-
-      if(snapshot.empty){
-        list.innerHTML = "<div class='small'>No approvals yet</div>";
-        return;
-      }
-
-      snapshot.forEach(doc=>{
-        const data = doc.data();
-        const div = document.createElement("div");
-        div.className = "pair-item";
-        div.textContent = `User: ${data.approvedUser} | Admin: ${data.adminUid} | ${data.approvedAt?.toDate() || ''}`;
-        list.appendChild(div);
-      });
-    });
-}
-
-  function approveUser(uid){
-  if(!confirm("Approve this user?")) return;
-
-  const adminUid = auth.currentUser.uid;
-  const approvedAt = firebase.firestore.FieldValue.serverTimestamp();
-
-  // Update user doc
-  authDb.collection("users").doc(uid).update({
-    approved: true
-  }).then(()=>{
-    // Add audit log entry
-    authDb.collection("auditLogs").add({
-      approvedUser: uid,
-      adminUid: adminUid,
-      approvedAt: approvedAt
-    });
-
-    loadPendingUsers();
-  });
-}
-
 
 // ===================== Login / Signup / Logout =====================
 function login(){
@@ -561,11 +461,16 @@ function login(){
   const p=document.getElementById('password').value;
   auth.signInWithEmailAndPassword(e,p)
     .catch(err=>{
-      document.getElementById('authMsg').innerText = err.message;
+      document.getElementById('authMsg').innerText=err.message;
     });
 }
 
-function signup(){document.getElementById('confirmPassword').style.display='block';document.getElementById('createBtn').style.display='inline-block';document.getElementById('signupBtn').style.display='none';}
+function signup(){
+  document.getElementById('confirmPassword').style.display='block';
+  document.getElementById('createBtn').style.display='inline-block';
+  document.getElementById('signupBtn').style.display='none';
+}
+
 function create(){
   const e = document.getElementById('email').value.trim();
   const p = document.getElementById('password').value;
@@ -586,8 +491,10 @@ function create(){
       });
     })
     .then(()=>{
-      document.getElementById('authMsg').innerText =
-        "Account created. Waiting for admin approval.";
+      document.getElementById('authMsg').innerText = "Account created. Waiting for admin approval.";
+      document.getElementById('confirmPassword').style.display='none';
+      document.getElementById('createBtn').style.display='none';
+      document.getElementById('signupBtn').style.display='inline-block';
     })
     .catch(err=>{
       document.getElementById('authMsg').innerText = err.message;
@@ -597,19 +504,93 @@ function create(){
 function logout(){
   auth.signOut();
 }
+
+// ===================== Admin functions =====================
+function loadPendingUsers(){
+  const list = document.getElementById('userList');
+  list.innerHTML = "Loading...";
+
+  authDb.collection("users")
+    .where("approved", "==", false)
+    .get()
+    .then(snapshot=>{
+      list.innerHTML = "";
+      if(snapshot.empty){
+        list.innerHTML = "<div class='small'>No pending users</div>";
+        return;
+      }
+      snapshot.forEach(doc=>{
+        const data = doc.data();
+        const div = document.createElement("div");
+        div.className = "pair-item";
+
+        const email = document.createElement("span");
+        email.textContent = data.email || doc.id;
+
+        const btn = document.createElement("button");
+        btn.textContent = "Approve";
+        btn.className = "small-btn";
+        btn.onclick = ()=>approveUser(doc.id);
+
+        div.appendChild(email);
+        div.appendChild(btn);
+        list.appendChild(div);
+      });
+    });
+}
+
+function approveUser(uid){
+  if(!confirm("Approve this user?")) return;
+
+  const adminUid = auth.currentUser.uid;
+  const approvedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+  authDb.collection("users").doc(uid).update({
+    approved: true
+  }).then(()=>{
+    authDb.collection("auditLogs").add({
+      approvedUser: uid,
+      adminUid: adminUid,
+      approvedAt: approvedAt
+    });
+    loadPendingUsers();
+    loadAuditLogs();
+  });
+}
+
+function loadAuditLogs(){
+  const list = document.getElementById('auditList');
+  list.innerHTML = "Loading...";
+
+  authDb.collection("auditLogs")
+    .orderBy("approvedAt","desc")
+    .limit(20)
+    .get()
+    .then(snapshot=>{
+      list.innerHTML = "";
+      if(snapshot.empty){
+        list.innerHTML = "<div class='small'>No approvals yet</div>";
+        return;
+      }
+      snapshot.forEach(doc=>{
+        const data = doc.data();
+        const div = document.createElement("div");
+        div.className = "pair-item";
+        div.textContent = `User: ${data.approvedUser} | Admin: ${data.adminUid} | ${data.approvedAt?.toDate() || ''}`;
+        list.appendChild(div);
+      });
+    });
+}
+
 // ===================== Reload Cloud =====================
 function reloadCloud(){startCloudListener();}
- 
-// ===================== Event Listeners =====================
-document.getElementById('loginBtn').onclick=login;
-document.getElementById('signupBtn').onclick=signup;
-document.getElementById('createBtn').onclick=create;
-document.getElementById('logoutBtn').onclick=logout;
 
-  auth.onAuthStateChanged(user=>{
+// ===================== Auth State Listener =====================
+auth.onAuthStateChanged(user=>{
   if(!user){
-    calcSection.style.display='none';
-    authSection.style.display='block';
+    document.getElementById('calcSection').style.display='none';
+    document.getElementById('authSection').style.display='block';
+    USER_APPROVED = false;
     return;
   }
 
@@ -621,33 +602,35 @@ document.getElementById('logoutBtn').onclick=logout;
       return;
     }
 
- // APPROVED USER
-   
-USER_APPROVED = true;
+    // APPROVED USER
+    USER_APPROVED = true;
+    document.getElementById('authSection').style.display='none';
+    document.getElementById('calcSection').style.display='block';
 
-authSection.style.display = 'none';
-calcSection.style.display = 'block';
-    
-const calc = document.getElementById('calcSection');
-calc.style.pointerEvents = "auto";
-calc.style.opacity = "1"
+    const calc = document.getElementById('calcSection');
+    calc.style.pointerEvents = "auto";
+    calc.style.opacity = "1";
 
-if(doc.data().role === "admin"){
-  document.getElementById('adminSection').style.display = 'block';
-  loadPendingUsers();
-  loadAuditLogs();
-}else{
-  document.getElementById('adminSection').style.display = 'none';
-}
+    if(doc.data().role === "admin"){
+      document.getElementById('adminSection').style.display = 'block';
+      loadPendingUsers();
+      loadAuditLogs();
+    } else {
+      document.getElementById('adminSection').style.display = 'none';
+    }
 
-loadLocalPairs();
-populateDropdown();
-startCloudListener();
-
+    loadLocalPairs();
+    populateDropdown();
+    startCloudListener();
   });
 });
 
-
+// ===================== Event Listeners =====================
+document.getElementById('loginBtn').onclick=login;
+document.getElementById('signupBtn').onclick=signup;
+document.getElementById('createBtn').onclick=create;
+document.getElementById('logoutBtn').onclick=logout;
 </script>
 </body>
 </html>
+
