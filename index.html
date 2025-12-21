@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗</h1>
+    <h1>₹@ⓖ$ 𝕱✗yyy</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -111,15 +111,7 @@ button.secondary{background:#eee;color:#111}
 <div id="modal" class="modal" aria-hidden="true">
   <div class="panel" role="dialog" aria-modal="true">
     <h3>Add / Edit / Sync Pairs</h3>
-    <div id="stepUnlock">
-      <div class="small">Enter App Password</div>
-      <input id="modalAppPw" type="password" placeholder="App password">
-      <div class="row" style="margin-top:8px">
-        <button onclick="unlockModal()">Continue</button>
-        <button class="secondary" onclick="closeModal()">Close</button>
-      </div>
-      <div id="unlockErr" class="small" style="color:#b00020"></div>
-    </div>
+    
     <div id="editor" style="display:none;margin-top:12px">
       <label>Pair code (e.g. EURUSD)</label>
       <input id="editName" placeholder="PAIR (uppercase)">
@@ -195,7 +187,6 @@ const cloudApp = firebase.initializeApp({
 const db = cloudApp.firestore();
 
 // ===================== Global Vars =====================
-const APP_PASSWORD="6565";
 const CLOUD_PASSWORD="123456";
 const LOCAL_KEY="fx_pairs_v_final";
 const FIRE_COLLECTION="cloudPairs";
@@ -207,26 +198,9 @@ const defaultPairs = {};
 function loadLocalPairs(){
   const raw = localStorage.getItem(LOCAL_KEY);
   const saved = raw ? JSON.parse(raw) : {};
-
   pairs = JSON.parse(JSON.stringify(defaultPairs));
-
-  Object.keys(saved).forEach(k=>{
-    pairs[k] = saved[k];
-  });
-
-  // 🔑 INITIALIZE ORDER ONCE (CRITICAL FIX)
-  let idx = 0;
-  Object.keys(pairs)
-    .sort((a,b)=>a.localeCompare(b))
-    .forEach(k=>{
-      if(typeof pairs[k].order !== "number"){
-        pairs[k].order = idx++;
-      }
-    });
-
-  saveLocalPairs();
+  Object.keys(saved).forEach(k=>pairs[k]=saved[k]);
 }
-
 
 function saveLocalPairs(){
   localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs));
@@ -305,10 +279,21 @@ function clearCalc(){document.getElementById('risk').value='';document.getElemen
 // ===================== Modal & Local / Cloud =====================
 function openModal(){
   document.getElementById('modal').style.display='flex';
-  document.getElementById('stepUnlock').style.display='block';
-  document.getElementById('editor').style.display='none';
-  document.getElementById('unlockErr').innerText='';
-  document.getElementById('modalAppPw').value='';
+  document.getElementById('stepUnlock')?.remove();
+  document.getElementById('editor').style.display='block';
+
+  const sel=document.getElementById('pairSelect').value;
+  if(pairs[sel]){
+    document.getElementById('editName').value=sel;
+    document.getElementById('editPoint').value=pairs[sel].point;
+    document.getElementById('editPip').value=pairs[sel].pip;
+    document.getElementById('editCommission').value=pairs[sel].commission;
+  } else {
+    document.getElementById('editName').value='';
+    document.getElementById('editPoint').value='';
+    document.getElementById('editPip').value='';
+    document.getElementById('editCommission').value='';
+  }
 }
 
 function closeModal(){document.getElementById('modal').style.display='none';closeSyncArea();closeDeleteEdit();}
@@ -338,11 +323,17 @@ function saveLocalPair(){
   const pip=parseFloat(document.getElementById('editPip').value);
   const commission=parseFloat(document.getElementById('editCommission').value);
   if(!name||isNaN(point)||isNaN(pip)||isNaN(commission)){alert("Enter valid name, point, pip and commission.");return;}
-  const existing=pairs[name];
-  const type=existing&&existing.type==='cloud'?'cloud':'local';
-  pairs[name]={point,pip,commission,type};
-  saveLocalPairs();populateDropdown();
-  alert(name+" saved locally.");
+
+  const order = typeof pairs[name]?.order === 'number'
+    ? pairs[name].order
+    : Object.keys(pairs).length;
+
+  const type = pairs[name]?.type === 'cloud' ? 'cloud' : 'local';
+
+  pairs[name]={ point, pip, commission, type, order };
+
+  saveLocalPairs();
+  populateDropdown();
 }
 
 // ===================== Cloud Sync =====================
@@ -393,28 +384,53 @@ function openDeleteEdit(){
   const wrap=document.getElementById('deList');
   wrap.innerHTML='';
 
-  Object.keys(pairs)
-    .sort((a,b)=>{
-      return (pairs[a].order ?? 0) - (pairs[b].order ?? 0);
-    })
-    .forEach(name=>{
-      const div=document.createElement('div');
-      div.className='pair-item';
+  getOrderedKeys().forEach(name=>{
+    const div=document.createElement('div');
+    div.className='pair-item';
+
     const btns=document.createElement('div');
-    const del=document.createElement('button');del.className='small-btn';del.textContent='Delete';del.onclick=()=>{if(confirm("Delete "+name+"?")){delete pairs[name];saveLocalPairs();populateDropdown();openDeleteEdit();}};
-    const up=document.createElement('button');up.className='small-btn';up.textContent='↑';up.onclick=()=>{moveUp(name);openDeleteEdit();};
-    const down=document.createElement('button');down.className='small-btn';down.textContent='↓';down.onclick=()=>{moveDown(name);openDeleteEdit();};
-    btns.appendChild(del);btns.appendChild(up);btns.appendChild(down);
+
+    const del=document.createElement('button');
+    del.className='small-btn';
+    del.textContent='Delete';
+    del.onclick=()=>{
+      if(confirm("Delete "+name+"?")){
+        delete pairs[name];
+        saveLocalPairs();
+        populateDropdown();
+        openDeleteEdit();
+      }
+    };
+
+    const up=document.createElement('button');
+    up.className='small-btn';
+    up.textContent='↑';
+    up.onclick=()=>moveUp(name);
+
+    const down=document.createElement('button');
+    down.className='small-btn';
+    down.textContent='↓';
+    down.onclick=()=>moveDown(name);
+
+    btns.appendChild(del);
+    btns.appendChild(up);
+    btns.appendChild(down);
+
     div.innerHTML=`<span>${name} (${pairs[name].type==='cloud'?'C':'L'})</span>`;
     div.appendChild(btns);
     wrap.appendChild(div);
   });
+
   document.getElementById('deArea').style.display='block';
 }
+
 function closeDeleteEdit(){document.getElementById('deArea').style.display='none';}
 function getOrderedKeys(){
   return Object.keys(pairs)
-    .map(k => ({ k, order: pairs[k].order ?? 9999 }))
+    .map((k,i) => ({
+      k,
+      order: typeof pairs[k].order === 'number' ? pairs[k].order : i
+    }))
     .sort((a,b) => a.order - b.order)
     .map(o => o.k);
 }
@@ -456,4 +472,15 @@ function signup(){document.getElementById('confirmPassword').style.display='bloc
 function create(){const e=document.getElementById('email').value.trim(),p=document.getElementById('password').value,cp=document.getElementById('confirmPassword').value;if(p!==cp){document.getElementById('authMsg').innerText="Passwords do not match";return;}auth.createUserWithEmailAndPassword(e,p).then(()=>{document.getElementById('authMsg').innerText="User created. Login now.";document.getElementById('confirmPassword').style.display='none';document.getElementById('createBtn').style.display='none';document.getElementById('signupBtn').style.display='inline-block';}).catch(err=>{document.getElementById('authMsg').innerText=err.message});}
 function logout(){auth.signOut();document.getElementById('calcSection').style.display='none';document.getElementById('authSection').style.display='block';document.getElementById('authMsg').innerText='';}
 
-// =================
+// ===================== Reload Cloud =====================
+function reloadCloud(){startCloudListener();}
+ 
+// ===================== Event Listeners =====================
+document.getElementById('loginBtn').onclick=login;
+document.getElementById('signupBtn').onclick=signup;
+document.getElementById('createBtn').onclick=create;
+document.getElementById('logoutBtn').onclick=logout;
+
+</script>
+</body>
+</html>
