@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗6</h1>
+    <h1>₹@ⓖ$ 𝕱✗67</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -66,7 +66,21 @@ button.secondary{background:#eee;color:#111}
         <button id="signupBtn">Sign Up</button>
         <button id="createBtn" style="display:none">Create</button>
       </div>
-      <button class="secondary" id="forgotBtn" style="margin-top:6px">Forgot Password?</button>
+     <!-- Forgot Password Section -->
+  <div id="forgotSection" style="margin-top:6px;">
+    <button class="secondary" id="forgotBtn">Forgot Password?</button>
+    
+    <!-- Inline Email Input + Send/Cancel Buttons -->
+    <div id="forgotEmailWrap" style="display:none; margin-top:8px;">
+      <input type="email" id="forgotEmail" placeholder="Enter your email">
+      <div class="row" style="margin-top:6px; gap:6px;">
+        <button id="sendResetBtn">Send Reset Link</button>
+        <button class="secondary" id="cancelResetBtn">Cancel</button>
+      </div>
+      <div id="forgotMsg" class="small" style="margin-top:4px;"></div>
+    </div>
+  </div>
+
       <div id="authMsg" class="small"></div>
     </div>
 
@@ -840,32 +854,56 @@ document.getElementById('loginBtn').onclick=login;
 document.getElementById('signupBtn').onclick=signup;
 document.getElementById('createBtn').onclick=create;
 document.getElementById('logoutBtn').onclick=logout;
- document.getElementById('forgotBtn').onclick = () => {
-  const email = prompt("Enter your email for password reset:");
-  if (!email) return;
+ // ===== Forgot Password Inline Functionality =====
 
-  // Check Firestore users collection first
+// Show email input when forgot clicked
+document.getElementById('forgotBtn').onclick = () => {
+  document.getElementById('forgotEmailWrap').style.display = 'block';
+  document.getElementById('forgotMsg').innerText = '';
+};
+
+// Cancel button hides input
+document.getElementById('cancelResetBtn').onclick = () => {
+  document.getElementById('forgotEmailWrap').style.display = 'none';
+  document.getElementById('forgotEmail').value = '';
+  document.getElementById('forgotMsg').innerText = '';
+};
+
+// Send reset link button
+document.getElementById('sendResetBtn').onclick = () => {
+  const email = document.getElementById('forgotEmail').value.trim();
+  const msgEl = document.getElementById('forgotMsg');
+
+  if(!email){
+    msgEl.innerText = "Enter your email first";
+    return;
+  }
+
+  // Check Firestore users collection
   authDb.collection("users").where("email", "==", email).get()
     .then(snapshot => {
-      if (snapshot.empty) {
-        alert("This email is not registered.");
-        return;
-      }
-      
-      const userData = snapshot.docs[0].data();
-      if (!userData.approved) {
-        alert("Your account is not approved yet. Cannot reset password.");
+      if(snapshot.empty){
+        msgEl.innerText = "Invalid email ID (not registered)";
         return;
       }
 
-      // Send reset email
-      return auth.sendPasswordResetEmail(email)
+      const userData = snapshot.docs[0].data();
+      if(!userData.approved){
+        msgEl.innerText = "Your account is not approved yet";
+        return;
+      }
+
+      // Send Firebase Auth password reset email
+      auth.sendPasswordResetEmail(email)
         .then(() => {
-          alert("Password reset link sent to " + email);
+          msgEl.innerText = "Password reset link sent to " + email;
+        })
+        .catch(err => {
+          msgEl.innerText = "Error: " + err.message;
         });
     })
     .catch(err => {
-      alert("Error: " + err.message);
+      msgEl.innerText = "Error accessing database: " + err.message;
     });
 };
 
