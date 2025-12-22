@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗13</h1>
+    <h1>₹@ⓖ$ 𝕱✗z</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -423,59 +423,67 @@ function pushSelectedToCloud(){
 
 // ===================== Delete / Edit =====================
 function openDeleteEdit(){
-  alert("openDeleteEdit called");
-  const wrap=document.getElementById('deList');
-  wrap.innerHTML='';
+  const wrap = document.getElementById('deList');
+  wrap.innerHTML = '';
+
+  // 🔴 HIDE editor
+  document.getElementById('editor').style.display = 'none';
+
+  // 🔴 HIDE sync + admin panels (safety)
+  document.getElementById('syncArea').style.display = 'none';
+  document.getElementById('adminGate').style.display = 'none';
+  document.getElementById('adminPanel').style.display = 'none';
 
   getOrderedKeys().forEach(name=>{
-    const div=document.createElement('div');
-    div.className='pair-item';
+    const div = document.createElement('div');
+    div.className = 'pair-item';
 
-    const btns=document.createElement('div');
+    const btns = document.createElement('div');
 
-   if(pairs[name].type !== 'cloud'){
-  const del=document.createElement('button');
-  del.className='small-btn';
-  del.textContent='Delete';
-  del.onclick=()=>{
-    if(confirm("Delete "+name+"?")){
-      delete pairs[name];
-      saveLocalPairs();
-      populateDropdown();
-      openDeleteEdit();
+    // DELETE (only for local)
+    if(pairs[name].type !== 'cloud'){
+      const del = document.createElement('button');
+      del.className = 'small-btn';
+      del.textContent = 'Delete';
+      del.onclick = ()=>{
+        if(confirm("Delete "+name+"?")){
+          delete pairs[name];
+          saveLocalPairs();
+          populateDropdown();
+          openDeleteEdit();
+        }
+      };
+      btns.appendChild(del);
     }
-  };
-  btns.appendChild(del);
-}
-// MOVE UP
-btns.appendChild(up);
 
-// MOVE DOWN
-btns.appendChild(down);
+    const up = document.createElement('button');
+    up.className = 'small-btn';
+    up.textContent = '↑';
+    up.onclick = ()=>moveUp(name);
 
-    const up=document.createElement('button');
-    up.className='small-btn';
-    up.textContent='↑';
-    up.onclick=()=>moveUp(name);
+    const down = document.createElement('button');
+    down.className = 'small-btn';
+    down.textContent = '↓';
+    down.onclick = ()=>moveDown(name);
 
-    const down=document.createElement('button');
-    down.className='small-btn';
-    down.textContent='↓';
-    down.onclick=()=>moveDown(name);
-
-    btns.appendChild(del);
     btns.appendChild(up);
     btns.appendChild(down);
 
-    div.innerHTML=`<span>${name} (${pairs[name].type==='cloud'?'C':'L'})</span>`;
+    div.innerHTML = `<span>${name} (${pairs[name].type==='cloud'?'C':'L'})</span>`;
     div.appendChild(btns);
     wrap.appendChild(div);
   });
 
-  document.getElementById('deArea').style.display='block';
+  // 🔴 SHOW delete/edit area
+  document.getElementById('deArea').style.display = 'block';
 }
 
-function closeDeleteEdit(){document.getElementById('deArea').style.display='none';}
+
+function closeDeleteEdit(){
+  document.getElementById('deArea').style.display='none';
+  document.getElementById('editor').style.display='block';
+}
+
 function getOrderedKeys(){
   return Object.keys(pairs)
     .map((k,i) => ({
