@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗4</h1>
+    <h1>₹@ⓖ$ 𝕱✗5</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -840,6 +840,19 @@ document.getElementById('loginBtn').onclick=login;
 document.getElementById('signupBtn').onclick=signup;
 document.getElementById('createBtn').onclick=create;
 document.getElementById('logoutBtn').onclick=logout;
+  document.getElementById('forgotBtn').onclick = () => {
+  const email = prompt("Enter your email for password reset:");
+  if (!email) return;
+  
+  auth.sendPasswordResetEmail(email)
+    .then(() => {
+      alert("Password reset link sent to " + email);
+    })
+    .catch(err => {
+      alert("Error: " + err.message);
+    });
+};
+
 </script>
 </body>
 </html>
