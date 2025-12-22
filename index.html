@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗z</h1>
+    <h1>₹@ⓖ$ 𝕱✗1223</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -307,8 +307,7 @@ function clearCalc(){document.getElementById('risk').value='';document.getElemen
 // ===================== Modal & Local / Cloud =====================
 function openModal(){
   document.getElementById('modal').style.display='flex';
- const su = document.getElementById('stepUnlock');
-if(su) su.remove();
+  document.getElementById('stepUnlock')?.remove();
   document.getElementById('editor').style.display='block';
   document.getElementById('adminPanelBtn').style.display = 'none';
   const sel=document.getElementById('pairSelect').value;
@@ -423,67 +422,66 @@ function pushSelectedToCloud(){
 
 // ===================== Delete / Edit =====================
 function openDeleteEdit(){
-  const wrap = document.getElementById('deList');
-  wrap.innerHTML = '';
+const wrap=document.getElementById('deList');
+wrap.innerHTML='';
 
-  // 🔴 HIDE editor
-  document.getElementById('editor').style.display = 'none';
 
-  // 🔴 HIDE sync + admin panels (safety)
-  document.getElementById('syncArea').style.display = 'none';
-  document.getElementById('adminGate').style.display = 'none';
-  document.getElementById('adminPanel').style.display = 'none';
+getOrderedKeys().forEach(name=>{
+const div=document.createElement('div');
+div.className='pair-item';
 
-  getOrderedKeys().forEach(name=>{
-    const div = document.createElement('div');
-    div.className = 'pair-item';
 
-    const btns = document.createElement('div');
+const label=document.createElement('span');
+label.textContent=`${name} (${pairs[name].type==='cloud'?'C':'L'})`;
 
-    // DELETE (only for local)
-    if(pairs[name].type !== 'cloud'){
-      const del = document.createElement('button');
-      del.className = 'small-btn';
-      del.textContent = 'Delete';
-      del.onclick = ()=>{
-        if(confirm("Delete "+name+"?")){
-          delete pairs[name];
-          saveLocalPairs();
-          populateDropdown();
-          openDeleteEdit();
-        }
-      };
-      btns.appendChild(del);
-    }
 
-    const up = document.createElement('button');
-    up.className = 'small-btn';
-    up.textContent = '↑';
-    up.onclick = ()=>moveUp(name);
+const btns=document.createElement('div');
 
-    const down = document.createElement('button');
-    down.className = 'small-btn';
-    down.textContent = '↓';
-    down.onclick = ()=>moveDown(name);
 
-    btns.appendChild(up);
-    btns.appendChild(down);
-
-    div.innerHTML = `<span>${name} (${pairs[name].type==='cloud'?'C':'L'})</span>`;
-    div.appendChild(btns);
-    wrap.appendChild(div);
-  });
-
-  // 🔴 SHOW delete/edit area
-  document.getElementById('deArea').style.display = 'block';
+// DELETE — ONLY LOCAL
+if(pairs[name].type !== 'cloud'){
+const del=document.createElement('button');
+del.className='small-btn';
+del.textContent='Delete';
+del.onclick=()=>{
+if(confirm("Delete "+name+"?")){
+delete pairs[name];
+saveLocalPairs();
+populateDropdown();
+openDeleteEdit();
+}
+};
+btns.appendChild(del);
 }
 
 
-function closeDeleteEdit(){
-  document.getElementById('deArea').style.display='none';
-  document.getElementById('editor').style.display='block';
-}
+// MOVE UP
+const up=document.createElement('button');
+up.className='small-btn';
+up.textContent='↑';
+up.onclick=()=>moveUp(name);
 
+
+// MOVE DOWN
+const down=document.createElement('button');
+down.className='small-btn';
+down.textContent='↓';
+down.onclick=()=>moveDown(name);
+
+
+btns.appendChild(up);
+btns.appendChild(down);
+
+
+div.appendChild(label);
+div.appendChild(btns);
+wrap.appendChild(div);
+});
+
+
+document.getElementById('deArea').style.display='block';
+}
+function closeDeleteEdit(){document.getElementById('deArea').style.display='none';}
 function getOrderedKeys(){
   return Object.keys(pairs)
     .map((k,i) => ({
