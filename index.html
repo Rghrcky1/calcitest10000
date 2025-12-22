@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗0</h1>
+    <h1>₹@ⓖ$ 𝕱✗1223</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -134,8 +134,7 @@ button.secondary{background:#eee;color:#111}
 
      <!-- Sync area (for Admin Panel) -->
 <div id="syncArea" style="display:none;margin-top:12px">
- <div class="small">Cloud pairs (admin only)</div>
-
+  <div class="small">Select LOCAL pairs to push to cloud</div>
   <div id="syncListWrap" style="display:block;margin-top:10px">
     <div id="syncList" class="pair-list"></div>
     <div class="row" style="margin-top:8px">
@@ -364,70 +363,24 @@ function saveLocalPair(){
 // ===================== Cloud Sync =====================
 let cloudUnlocked=false;
 function openSyncCloudAdmin(){
-  cloudUnlocked = true;
-
+  cloudUnlocked = true; // Admin bypass
   const syncArea = document.getElementById('syncArea');
-  const wrap = document.getElementById('syncList');
+  const syncListWrap = document.getElementById('syncListWrap');
 
+  // Show sync area
   syncArea.style.display = 'block';
+  syncListWrap.style.display = 'block';
+
+  // Populate local pairs
+  const wrap = document.getElementById('syncList');
   wrap.innerHTML = '';
-
-  Object.keys(pairs)
-    .filter(name => pairs[name].type === 'cloud')
-    .sort()
-    .forEach(name => {
-      const div = document.createElement('div');
-      div.className = 'pair-item';
-
-      const label = document.createElement('span');
-      label.textContent = name;
-
-      const btns = document.createElement('div');
-
-      const editBtn = document.createElement('button');
-      editBtn.className = 'small-btn';
-      editBtn.textContent = 'Edit';
-      editBtn.onclick = () => editCloudPair(name);
-
-      const delBtn = document.createElement('button');
-      delBtn.className = 'small-btn';
-      delBtn.textContent = 'Delete';
-      delBtn.onclick = () => deleteCloudPair(name);
-
-      btns.appendChild(editBtn);
-      btns.appendChild(delBtn);
-
-      div.appendChild(label);
-      div.appendChild(btns);
-      wrap.appendChild(div);
-    });
-}
-function editCloudPair(name){
-  const p = pairs[name];
-  if(!p || p.type !== 'cloud') return;
-
-  const point = prompt("Point value:", p.point);
-  if(point === null) return;
-
-  const pip = prompt("Pip value:", p.pip);
-  if(pip === null) return;
-
-  const commission = prompt("Commission:", p.commission);
-  if(commission === null) return;
-
-  db.collection(FIRE_COLLECTION).doc(name).update({
-    point: Number(point),
-    pip: Number(pip),
-    commission: Number(commission)
+  Object.keys(pairs).sort().forEach(name => {
+    if(pairs[name].type !== 'local') return; // only local pairs
+    const div = document.createElement('div');
+    div.className = 'pair-item';
+    div.innerHTML = `<span>${name}</span><input type="checkbox" data-name="${name}">`;
+    wrap.appendChild(div);
   });
-
-  alert("Cloud pair updated");
-}
-
-function deleteCloudPair(name){
-  if(!confirm("Delete CLOUD pair " + name + "?")) return;
-  db.collection(FIRE_COLLECTION).doc(name).delete();
-  alert("Cloud pair deleted");
 }
 
 function closeSyncArea(){document.getElementById('syncArea').style.display='none';document.getElementById('syncList').innerHTML='';document.getElementById('syncListWrap').style.display='none';cloudUnlocked=false;}
@@ -472,48 +425,45 @@ function openDeleteEdit(){
   const wrap=document.getElementById('deList');
   wrap.innerHTML='';
 
-  getOrderedKeys()
-    .filter(name => pairs[name].type === 'local') // 🔒 KEY LINE
-    .forEach(name=>{
-      const div=document.createElement('div');
-      div.className='pair-item';
+  getOrderedKeys().forEach(name=>{
+    const div=document.createElement('div');
+    div.className='pair-item';
 
-      const btns=document.createElement('div');
+    const btns=document.createElement('div');
 
-      const del=document.createElement('button');
-      del.className='small-btn';
-      del.textContent='Delete';
-      del.onclick=()=>{
-        if(confirm("Delete "+name+"?")){
-          delete pairs[name];
-          saveLocalPairs();
-          populateDropdown();
-          openDeleteEdit();
-        }
-      };
+    const del=document.createElement('button');
+    del.className='small-btn';
+    del.textContent='Delete';
+    del.onclick=()=>{
+      if(confirm("Delete "+name+"?")){
+        delete pairs[name];
+        saveLocalPairs();
+        populateDropdown();
+        openDeleteEdit();
+      }
+    };
 
-      const up=document.createElement('button');
-      up.className='small-btn';
-      up.textContent='↑';
-      up.onclick=()=>moveUp(name);
+    const up=document.createElement('button');
+    up.className='small-btn';
+    up.textContent='↑';
+    up.onclick=()=>moveUp(name);
 
-      const down=document.createElement('button');
-      down.className='small-btn';
-      down.textContent='↓';
-      down.onclick=()=>moveDown(name);
+    const down=document.createElement('button');
+    down.className='small-btn';
+    down.textContent='↓';
+    down.onclick=()=>moveDown(name);
 
-      btns.appendChild(del);
-      btns.appendChild(up);
-      btns.appendChild(down);
+    btns.appendChild(del);
+    btns.appendChild(up);
+    btns.appendChild(down);
 
-      div.innerHTML=`<span>${name}</span>`;
-      div.appendChild(btns);
-      wrap.appendChild(div);
-    });
+    div.innerHTML=`<span>${name} (${pairs[name].type==='cloud'?'C':'L'})</span>`;
+    div.appendChild(btns);
+    wrap.appendChild(div);
+  });
 
   document.getElementById('deArea').style.display='block';
 }
-
 
 function closeDeleteEdit(){document.getElementById('deArea').style.display='none';}
 function getOrderedKeys(){
