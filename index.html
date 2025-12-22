@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗</h1>
+    <h1>₹@ⓖ$ 𝕱✗aaa</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -427,11 +427,12 @@ function openDeleteEdit(){
 
   getOrderedKeys().forEach(name=>{
     const div=document.createElement('div');
-    div.className='pair-item';
+div.className='pair-item';
 
-    const btns=document.createElement('div');
+const btns=document.createElement('div');
 
-    if(pairs[name].type === 'local'){
+/* DELETE → LOCAL ONLY */
+if(pairs[name].type === 'local'){
   const del=document.createElement('button');
   del.className='small-btn';
   del.textContent='Delete';
@@ -445,27 +446,25 @@ function openDeleteEdit(){
   };
   btns.appendChild(del);
 }
-    const up=document.createElement('button');
-    up.className='small-btn';
-    up.textContent='↑';
-    up.onclick=()=>moveUp(name);
 
-    const down=document.createElement('button');
-    down.className='small-btn';
-    down.textContent='↓';
-    down.onclick=()=>moveDown(name);
+/* MOVE UP → ALL */
+const up=document.createElement('button');
+up.className='small-btn';
+up.textContent='↑';
+up.onclick=()=>moveUp(name);
+btns.appendChild(up);
 
-    btns.appendChild(del);
-    btns.appendChild(up);
-    btns.appendChild(down);
+/* MOVE DOWN → ALL */
+const down=document.createElement('button');
+down.className='small-btn';
+down.textContent='↓';
+down.onclick=()=>moveDown(name);
+btns.appendChild(down);
 
-    div.innerHTML=`<span>${name} (${pairs[name].type==='cloud'?'C':'L'})</span>`;
-    div.appendChild(btns);
-    wrap.appendChild(div);
-  });
-
-  document.getElementById('deArea').style.display='block';
-}
+/* ATTACH */
+div.innerHTML=`<span>${name} (${pairs[name].type==='cloud'?'C':'L'})</span>`;
+div.appendChild(btns);
+wrap.appendChild(div);
 
 function closeDeleteEdit(){document.getElementById('deArea').style.display='none';}
 function getOrderedKeys(){
