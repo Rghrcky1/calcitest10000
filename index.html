@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗67</h1>
+    <h1>₹@ⓖ$ 𝕱✗56</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -879,31 +879,14 @@ document.getElementById('sendResetBtn').onclick = () => {
     return;
   }
 
-  // Check Firestore users collection
-  authDb.collection("users").where("email", "==", email).get()
-    .then(snapshot => {
-      if(snapshot.empty){
-        msgEl.innerText = "Invalid email ID (not registered)";
-        return;
-      }
+ auth.sendPasswordResetEmail(email)
+  .then(() => {
+    msgEl.innerText =
+      "If this email is registered, a password reset link has been sent.";
+  })
+  .catch(err => {
+    msgEl.innerText = err.message;
 
-      const userData = snapshot.docs[0].data();
-      if(!userData.approved){
-        msgEl.innerText = "Your account is not approved yet";
-        return;
-      }
-
-      // Send Firebase Auth password reset email
-      auth.sendPasswordResetEmail(email)
-        .then(() => {
-          msgEl.innerText = "Password reset link sent to " + email;
-        })
-        .catch(err => {
-          msgEl.innerText = "Error: " + err.message;
-        });
-    })
-    .catch(err => {
-      msgEl.innerText = "Error accessing database: " + err.message;
     });
 };
 
