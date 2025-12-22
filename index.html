@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗1223</h1>
+    <h1>₹@ⓖ$ 𝕱✗</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -431,18 +431,20 @@ function openDeleteEdit(){
 
     const btns=document.createElement('div');
 
-    const del=document.createElement('button');
-    del.className='small-btn';
-    del.textContent='Delete';
-    del.onclick=()=>{
-      if(confirm("Delete "+name+"?")){
-        delete pairs[name];
-        saveLocalPairs();
-        populateDropdown();
-        openDeleteEdit();
-      }
-    };
-
+    if(pairs[name].type === 'local'){
+  const del=document.createElement('button');
+  del.className='small-btn';
+  del.textContent='Delete';
+  del.onclick=()=>{
+    if(confirm("Delete "+name+"?")){
+      delete pairs[name];
+      saveLocalPairs();
+      populateDropdown();
+      openDeleteEdit();
+    }
+  };
+  btns.appendChild(del);
+}
     const up=document.createElement('button');
     up.className='small-btn';
     up.textContent='↑';
