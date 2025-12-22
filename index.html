@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗aaa</h1>
+    <h1>₹@ⓖ$ 𝕱✗bbb</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -462,7 +462,10 @@ down.onclick=()=>moveDown(name);
 btns.appendChild(down);
 
 /* ATTACH */
-div.innerHTML=`<span>${name} (${pairs[name].type==='cloud'?'C':'L'})</span>`;
+const span = document.createElement('span');
+span.textContent = `${name} (${pairs[name].type==='cloud'?'C':'L'})`;
+div.appendChild(span);
+
 div.appendChild(btns);
 wrap.appendChild(div);
 
