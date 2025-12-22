@@ -54,7 +54,7 @@ button.secondary{background:#eee;color:#111}
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>₹@ⓖ$ 𝕱✗1</h1>
+    <h1>₹@ⓖ$ 𝕱✗13</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -307,7 +307,8 @@ function clearCalc(){document.getElementById('risk').value='';document.getElemen
 // ===================== Modal & Local / Cloud =====================
 function openModal(){
   document.getElementById('modal').style.display='flex';
-  document.getElementById('stepUnlock')?.remove();
+ const su = document.getElementById('stepUnlock');
+if(su) su.remove();
   document.getElementById('editor').style.display='block';
   document.getElementById('adminPanelBtn').style.display = 'none';
   const sel=document.getElementById('pairSelect').value;
@@ -422,6 +423,7 @@ function pushSelectedToCloud(){
 
 // ===================== Delete / Edit =====================
 function openDeleteEdit(){
+  alert("openDeleteEdit called");
   const wrap=document.getElementById('deList');
   wrap.innerHTML='';
 
