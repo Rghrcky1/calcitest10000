@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator3 </h1>
+    <h1>R-Calculator2 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -203,7 +203,7 @@ button.secondary{background:#eee;color:#111}
 <!-- Modal Editor -->
 <div id="modal" class="modal" aria-hidden="true">
   <div class="panel" role="dialog" aria-modal="true">
-    <h3>Add / Edit / Sync Pairs</h3>
+    <h3 id="pairModalTitle">Add / Edit / Sync Pairs</h3>
     
     <div id="editor" style="display:none;margin-top:12px">
       <label>Pair code (e.g. EURUSD)</label>
@@ -411,7 +411,10 @@ function clearCalc(){document.getElementById('risk').value='';document.getElemen
 }
 
 function openModal(){
-  resetPairModalUI();
+ 
+  document.getElementById('pairModalTitle').innerText = "Add / Edit / Sync Pairs";
+   resetPairModalUI();
+
   // reset fields every time modal opens
 document.getElementById('editName').value = '';
 document.getElementById('editPoint').value = '';
@@ -430,7 +433,9 @@ document.getElementById('editCommission').value = '';
 }
 
 function closeModal(){
+  document.getElementById('pairModalTitle').innerText = "Add / Edit / Sync Pairs";
   resetPairModalUI();
+
 
   document.getElementById('modal').style.display='none';
 
@@ -479,7 +484,9 @@ document.getElementById('modal').style.display = 'none';
 // ===================== Cloud Sync =====================
 let cloudUnlocked=false;
 function openSyncCloudAdmin(){
-  resetPairModalUI();
+ 
+  document.getElementById('pairModalTitle').innerText = "Sync Pairs to Cloud";
+ resetPairModalUI();
 
   cloudUnlocked = true; // Admin bypass
   const syncArea = document.getElementById('syncArea');
@@ -645,7 +652,10 @@ function pushSelectedToCloud(){
 
 // ===================== Delete / Edit =====================
 function openDeleteEdit(){
-  resetPairModalUI();
+ 
+  document.getElementById('pairModalTitle').innerText = "Delete / Edit Pairs";
+   resetPairModalUI();
+
 
 const wrap=document.getElementById('deList');
 wrap.innerHTML='';
@@ -913,7 +923,9 @@ function approveUser(uid){
 /* ===== ADMIN MODAL FUNCTIONS (ADD HERE) ===== */
 
 function openAdminGate(){
-  resetPairModalUI();
+  
+  document.getElementById('pairModalTitle').innerText = "Admin Panel";
+resetPairModalUI();
 
   document.getElementById('adminGate').style.display = 'block';
   document.getElementById('adminPanel').style.display = 'none';
