@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator1 </h1>
+    <h1>R-Calculator2 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -455,7 +455,8 @@ document.getElementById('editName').value = '';
 document.getElementById('editPoint').value = '';
 document.getElementById('editPip').value = '';
 document.getElementById('editCommission').value = '';
-
+// CLOSE add/edit modal FIRST
+document.getElementById('modal').style.display = 'none';
   showInfoModal(
   "Saved Successfully",
   `Local pair "${name}" saved successfully.`
