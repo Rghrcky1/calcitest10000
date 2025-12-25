@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator2 </h1>
+    <h1>R-Calculator3 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -1027,6 +1027,26 @@ function showAdminTab(tab){
 function loadAdminSyncList(){
   const wrap = document.getElementById('adminSyncList');
   wrap.innerHTML = '';
+
+  // Add Push button row at the top
+  const topRow = document.createElement('div');
+  topRow.className = 'row';
+  topRow.style.marginBottom = '8px';
+
+  const pushBtn = document.createElement('button');
+  pushBtn.textContent = 'Push Selected to Cloud';
+  pushBtn.onclick = pushSelectedAdminCloud;
+
+  const refreshBtn = document.createElement('button');
+  refreshBtn.textContent = 'Reload Pairs';
+  refreshBtn.className = 'secondary';
+  refreshBtn.onclick = loadAdminSyncList;
+
+  topRow.appendChild(pushBtn);
+  topRow.appendChild(refreshBtn);
+  wrap.appendChild(topRow);
+
+  // List pairs
   Object.keys(pairs).sort().forEach(name => {
     const p = pairs[name];
     const div = document.createElement('div');
@@ -1068,6 +1088,31 @@ function loadAdminSyncList(){
     div.appendChild(btns);
     wrap.appendChild(div);
   });
+}
+
+// Function to push selected local pairs to cloud from Admin Popup
+function pushSelectedAdminCloud(){
+  const checkboxes = document.querySelectorAll('#adminSyncList input[type=checkbox]:checked');
+  if(checkboxes.length === 0){
+    alert("Select at least one pair.");
+    return;
+  }
+
+  checkboxes.forEach(cb => {
+    const name = cb.dataset.name;
+    const data = pairs[name];
+    db.collection(FIRE_COLLECTION).doc(name).set({
+      point: data.point,
+      pip: data.pip,
+      commission: data.commission
+    });
+    pairs[name].type = 'cloud';
+  });
+
+  saveLocalPairs();
+  loadAdminSyncList();
+  populateDropdown(); // update main dropdown
+  alert("Selected pairs pushed to cloud.");
 }
 
 // Load pending user approvals
