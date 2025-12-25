@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator4 </h1>
+    <h1>R-Calculator5</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -267,44 +267,7 @@ button.secondary{background:#eee;color:#111}
       <div style="margin-top:8px">
         <button class="secondary" onclick="closeModal()">Close</button>
       </div>
-
-     <!-- Sync area (for Admin Panel) -->
-<div id="syncArea" style="display:none;margin-top:12px">
-  <div class="small">Select LOCAL pairs to push to cloud</div>
-  <div id="syncListWrap" style="display:block;margin-top:10px">
-    <div id="syncList" class="pair-list"></div>
-    <div class="row" style="margin-top:8px">
-      <button onclick="pushSelectedToCloud()">Push Selected to Cloud</button>
-      <button class="secondary" onclick="closeSyncArea()">Done</button>
-    </div>
-  </div>
-</div>
-
-      <!-- Delete/Edit area -->
-      <!-- Admin Gate -->
-<div id="adminGate" style="display:none;margin-top:12px">
-  <div class="small">Enter Admin Password</div>
-  <input id="adminPw" type="password" placeholder="Admin password">
-  <div class="row" style="margin-top:8px">
-    <button onclick="unlockAdmin()">Unlock</button>
-    <button class="secondary" onclick="closeAdmin()">Cancel</button>
-  </div>
-</div>
-
-<!-- Admin Dashboard -->
-<div id="adminPanel" style="display:none;margin-top:12px">
-  <h3>Pending Approvals</h3>
-  <div class="row" style="margin-top:8px">
-  <button onclick="openSyncCloudAdmin()">Sync Cloud</button>
-</div>
-
-  <div id="userList" class="pair-list"></div>
-  <div class="row" style="margin-top:8px">
-    
-    <button class="secondary" onclick="closeAdmin()">Close</button>
-  </div>
-</div>
-
+      
       <div id="deArea" style="display:none;margin-top:12px">
         <div class="small">Pairs (C = cloud, L = local)</div>
         <div id="deList" class="pair-list"></div>
