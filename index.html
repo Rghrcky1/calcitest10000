@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator1 </h1>
+    <h1>R-Calculator2 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -187,6 +187,17 @@ button.secondary{background:#eee;color:#111}
       Please verify your email to continue.
     </p>
     <button style="margin-top:14px;" onclick="closeVerifyModal()">OK</button>
+  </div>
+</div>
+<!-- ADMIN APPROVAL MODAL -->
+<div id="approvalModal" class="modal" style="display:none;">
+  <div class="panel" style="text-align:center;max-width:440px;">
+    <h2 style="margin-top:0;">Approval Pending</h2>
+    <p class="small" style="font-size:15px;line-height:1.5;">
+      Your email is verified successfully.<br>
+      Please wait for admin approval to access the calculator.
+    </p>
+    <button style="margin-top:14px;" onclick="closeApprovalModal()">OK</button>
   </div>
 </div>
 
@@ -801,6 +812,14 @@ function closeVerifyModal(){
   document.getElementById('password').value='';
   document.getElementById('confirmPassword').value='';
 }
+function showApprovalModal(){
+  document.getElementById('approvalModal').style.display = 'flex';
+}
+
+function closeApprovalModal(){
+  document.getElementById('approvalModal').style.display = 'none';
+  auth.signOut();
+}
 
 
 // ===================== Admin functions =====================
@@ -925,11 +944,11 @@ auth.onAuthStateChanged(user=>{
         userRef.update({ emailVerified: true });
       }
 
-      if(doc.data().approved !== true){
-        alert("Email verified. Waiting for admin approval.");
-        auth.signOut();
-        return;
-      }
+   if(doc.data().approved !== true){
+  showApprovalModal();
+  return;
+}
+
 
       // FULLY APPROVED USER
       USER_APPROVED = true;
