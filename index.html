@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator3 </h1>
+    <h1>R-Calculator4 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -1029,22 +1029,16 @@ function loadAdminSyncList(){
   wrap.innerHTML = '';
 
   // Add Push button row at the top
-  const topRow = document.createElement('div');
-  topRow.className = 'row';
-  topRow.style.marginBottom = '8px';
+const topRow = document.createElement('div');
+topRow.className = 'row';
+topRow.style.marginBottom = '8px';
 
-  const pushBtn = document.createElement('button');
-  pushBtn.textContent = 'Push Selected to Cloud';
-  pushBtn.onclick = pushSelectedAdminCloud;
+const pushBtn = document.createElement('button');
+pushBtn.textContent = 'Push Selected to Cloud';
+pushBtn.onclick = pushSelectedAdminCloud;
 
-  const refreshBtn = document.createElement('button');
-  refreshBtn.textContent = 'Reload Pairs';
-  refreshBtn.className = 'secondary';
-  refreshBtn.onclick = loadAdminSyncList;
-
-  topRow.appendChild(pushBtn);
-  topRow.appendChild(refreshBtn);
-  wrap.appendChild(topRow);
+topRow.appendChild(pushBtn);
+wrap.appendChild(topRow);
 
   // List pairs
   Object.keys(pairs).sort().forEach(name => {
