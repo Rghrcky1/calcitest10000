@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>rrr </h1>
+    <h1>rrr1 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -191,15 +191,13 @@ button.secondary{background:#eee;color:#111}
 </div>
 <!-- APPROVAL PENDING MODAL -->
 <div id="approvalModal" class="modal" style="display:none;">
-  <div class="panel" style="text-align:center;max-width:460px;">
+  <div class="panel" style="text-align:center;max-width:480px;">
     <h2>Approval Pending</h2>
     <p class="small" style="font-size:16px;line-height:1.6;">
       Your email is verified successfully.<br>
       Please wait for admin approval.
     </p>
-    <button onclick="closeApprovalModal()" style="margin-top:16px;">
-      OK
-    </button>
+    <button style="margin-top:18px;" onclick="closeApprovalModal()">OK</button>
   </div>
 </div>
 
@@ -931,6 +929,7 @@ function reloadCloud(){startCloudListener();}
 
 function closeApprovalModal(){
   document.getElementById('approvalModal').style.display = 'none';
+  auth.signOut();
 }
 
 
@@ -964,11 +963,11 @@ auth.onAuthStateChanged(user=>{
         userRef.update({ emailVerified: true });
       }
 
-   if(doc.data().approved !== true){
+if(doc.data().approved !== true){
   showApprovalModal();
-  auth.signOut();
-  return;
+  return; // ⛔ STOP EXECUTION HERE
 }
+
 
       // FULLY APPROVED USER
       USER_APPROVED = true;
