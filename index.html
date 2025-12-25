@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>rrr </title>
+<title>R-Calculator — Final</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>rrr1 </h1>
+    <h1>R-Calculator </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -178,7 +178,7 @@ button.secondary{background:#eee;color:#111}
     </div>
   </div>
 </div>
-    <!-- EMAIL VERIFICATION MODAL -->
+<!-- EMAIL VERIFICATION MODAL -->
 <div id="verifyModal" class="modal" style="display:none;">
   <div class="panel" style="text-align:center;max-width:420px;">
     <h2 style="margin-top:0;">Verify Your Email</h2>
@@ -189,19 +189,6 @@ button.secondary{background:#eee;color:#111}
     <button style="margin-top:14px;" onclick="closeVerifyModal()">OK</button>
   </div>
 </div>
-<!-- APPROVAL PENDING MODAL -->
-<div id="approvalModal" class="modal" style="display:none;">
-  <div class="panel" style="text-align:center;max-width:480px;">
-    <h2>Approval Pending</h2>
-    <p class="small" style="font-size:16px;line-height:1.6;">
-      Your email is verified successfully.<br>
-      Please wait for admin approval.
-    </p>
-    <button style="margin-top:18px;" onclick="closeApprovalModal()">OK</button>
-  </div>
-</div>
-
-
 
 <!-- Modal Editor -->
 <div id="modal" class="modal" aria-hidden="true">
@@ -776,9 +763,10 @@ function create(){
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
     })
-    .then(()=>{
+  .then(()=>{
   showVerifyModal();
-      
+
+
       // cleanup UI
       document.getElementById('name').value = '';
       document.getElementById('name').style.display='none';
@@ -795,6 +783,7 @@ function create(){
 function logout(){
   auth.signOut();
 }
+
   function showVerifyModal(){
   document.getElementById('verifyModal').style.display = 'flex';
 }
@@ -813,15 +802,6 @@ function closeVerifyModal(){
   document.getElementById('password').value='';
   document.getElementById('confirmPassword').value='';
 }
-function showApprovalModal(){
-  document.getElementById('approvalModal').style.display = 'flex';
-}
-
-function closeApprovalModal(){
-  document.getElementById('approvalModal').style.display = 'none';
-  auth.signOut();
-}
-
 
 // ===================== Admin functions =====================
 function loadPendingUsers(){
@@ -909,29 +889,11 @@ function closeAdmin(){
 
 /* ===== END ADMIN MODAL FUNCTIONS ===== */
 
-function showApprovalModal(){
-  document.getElementById('approvalModal').style.display = 'flex';
-}
-
-function closeApprovalModal(){
-  document.getElementById('approvalModal').style.display = 'none';
-  auth.signOut();
-}
 
 
 
 // ===================== Reload Cloud =====================
 function reloadCloud(){startCloudListener();}
-
-  function showApprovalModal(){
-  document.getElementById('approvalModal').style.display = 'flex';
-}
-
-function closeApprovalModal(){
-  document.getElementById('approvalModal').style.display = 'none';
-  auth.signOut();
-}
-
 
 
 // ===================== Auth State Listener =====================
@@ -953,6 +915,7 @@ auth.onAuthStateChanged(user=>{
   return;
 }
 
+
     const userRef = authDb.collection("users").doc(user.uid);
 
     userRef.get().then(doc=>{
@@ -963,11 +926,11 @@ auth.onAuthStateChanged(user=>{
         userRef.update({ emailVerified: true });
       }
 
-if(doc.data().approved !== true){
-  showApprovalModal();
-  return; // ⛔ STOP EXECUTION HERE
-}
-
+      if(doc.data().approved !== true){
+        alert("Email verified. Waiting for admin approval.");
+        auth.signOut();
+        return;
+      }
 
       // FULLY APPROVED USER
       USER_APPROVED = true;
