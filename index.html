@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator3 </h1>
+    <h1>R-Calculator23 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -203,7 +203,7 @@ button.secondary{background:#eee;color:#111}
 <!-- Modal Editor -->
 <div id="modal" class="modal" aria-hidden="true">
   <div class="panel" role="dialog" aria-modal="true">
-    <h3 id="pairModalTitle">Add / Edit / Sync Pairs</h3>
+    <h3>Add / Edit / Sync Pairs</h3>
     
     <div id="editor" style="display:none;margin-top:12px">
       <label>Pair code (e.g. EURUSD)</label>
@@ -401,19 +401,7 @@ function calculateLot(){
 function clearCalc(){document.getElementById('risk').value='';document.getElementById('sl').value='';document.getElementById('lotResult').style.display='none';}
 
 // ===================== Modal & Local / Cloud =====================
-
- function resetPairModalUI(){
-  document.getElementById('syncArea').style.display = 'none';
-  document.getElementById('adminGate').style.display = 'none';
-  document.getElementById('adminPanel').style.display = 'none';
-  document.getElementById('deArea').style.display = 'none';
-}
-
 function openModal(){
- 
-  document.getElementById('pairModalTitle').innerText = "Add / Edit / Sync Pairs";
-   resetPairModalUI();
-
   // reset fields every time modal opens
 document.getElementById('editName').value = '';
 document.getElementById('editPoint').value = '';
@@ -430,12 +418,16 @@ document.getElementById('editCommission').value = '';
     document.getElementById('adminPanelBtn').style.display = 'block';
   }
 }
-
+// ===== Reset all modal sections =====
+function resetModalSections() {
+    document.getElementById('editor').style.display = 'none';
+    document.getElementById('deArea').style.display = 'none';
+    document.getElementById('syncArea').style.display = 'none';
+    document.getElementById('adminGate').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'none';
+    document.getElementById('adminPw').value = '';
+}
 function closeModal(){
-  document.getElementById('pairModalTitle').innerText = "Add / Edit / Sync Pairs";
-  resetPairModalUI();
-
-
   document.getElementById('modal').style.display='none';
 
   closeSyncArea();
@@ -483,10 +475,6 @@ document.getElementById('modal').style.display = 'none';
 // ===================== Cloud Sync =====================
 let cloudUnlocked=false;
 function openSyncCloudAdmin(){
- 
-  document.getElementById('pairModalTitle').innerText = "Sync Pairs to Cloud";
- resetPairModalUI();
-
   cloudUnlocked = true; // Admin bypass
   const syncArea = document.getElementById('syncArea');
   const syncListWrap = document.getElementById('syncListWrap');
@@ -651,11 +639,6 @@ function pushSelectedToCloud(){
 
 // ===================== Delete / Edit =====================
 function openDeleteEdit(){
- 
-  document.getElementById('pairModalTitle').innerText = "Delete / Edit Pairs";
-   resetPairModalUI();
-
-
 const wrap=document.getElementById('deList');
 wrap.innerHTML='';
 
@@ -922,23 +905,10 @@ function approveUser(uid){
 /* ===== ADMIN MODAL FUNCTIONS (ADD HERE) ===== */
 
 function openAdminGate(){
-  document.getElementById('modal').style.display = 'flex';
-
-  document.getElementById('pairModalTitle').innerText = "Admin Panel";
-
-  // FORCE show admin gate
   document.getElementById('adminGate').style.display = 'block';
-
-  // FORCE hide editor manually
-  document.getElementById('editor').style.display = 'none';
-  document.getElementById('syncArea').style.display = 'none';
-  document.getElementById('deArea').style.display = 'none';
   document.getElementById('adminPanel').style.display = 'none';
-
   document.getElementById('adminPw').value = '';
 }
-
-
 
 function unlockAdmin(){
   const pw = document.getElementById('adminPw').value.trim();
@@ -954,9 +924,11 @@ function unlockAdmin(){
       return;
     }
 
-    document.getElementById('adminGate').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'block';
-    loadPendingUsers();
+   document.getElementById('adminGate').style.display = 'none';
+resetModalSections();      // <--- Add this to hide all first
+document.getElementById('adminPanel').style.display = 'block';
+loadPendingUsers();
+
   });
 }
 
