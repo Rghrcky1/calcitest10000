@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator 1</h1>
+    <h1>R-Calculator1 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -169,6 +169,7 @@ button.secondary{background:#eee;color:#111}
         <button onclick="calculateLot()">Calculate Lot Size</button>
         <button class="secondary" onclick="clearCalc()">Clear</button>
       </div>
+  
       <div id="lotResult" aria-live="polite" style="display:none"></div>
       <div class="row" style="margin-top:12px">
         <button class="secondary" onclick="openModal()">Add / Edit / Sync</button>
@@ -180,15 +181,6 @@ button.secondary{background:#eee;color:#111}
 </div>
 <!-- EMAIL VERIFICATION MODAL -->
 <div id="verifyModal" class="modal" style="display:none;">
-  <!-- GENERIC INFO MODAL -->
-<div id="infoModal" class="modal" style="display:none;">
-  <div class="panel" style="text-align:center;max-width:420px;">
-    <h2 id="infoTitle" style="margin-top:0;"></h2>
-    <p id="infoText" class="small" style="font-size:15px;line-height:1.5;"></p>
-    <button style="margin-top:14px;" onclick="closeInfoModal()">OK</button>
-  </div>
-</div>
-
   <div class="panel" style="text-align:center;max-width:420px;">
     <h2 style="margin-top:0;">Verify Your Email</h2>
     <p class="small" style="font-size:15px;line-height:1.5;">
@@ -198,6 +190,15 @@ button.secondary{background:#eee;color:#111}
     <button style="margin-top:14px;" onclick="closeVerifyModal()">OK</button>
   </div>
 </div>
+    <!-- GENERIC INFO MODAL -->
+<div id="infoModal" class="modal" style="display:none;">
+  <div class="panel" style="text-align:center;max-width:420px;">
+    <h2 id="infoTitle" style="margin-top:0;"></h2>
+    <p id="infoText" class="small" style="font-size:15px;line-height:1.5;"></p>
+    <button style="margin-top:14px;" onclick="closeInfoModal()">OK</button>
+  </div>
+</div>
+
 
 <!-- Modal Editor -->
 <div id="modal" class="modal" aria-hidden="true">
@@ -773,7 +774,10 @@ function create(){
       });
     })
   .then(()=>{
-  showVerifyModal();
+  showInfoModal(
+  "Account Created",
+  "A verification link has been sent to your email. Please verify and login again."
+);
 
 
       // cleanup UI
@@ -798,17 +802,6 @@ function logout(){
 }
 
 function closeVerifyModal(){
-  function showInfoModal(title, text){
-  document.getElementById('infoTitle').innerText = title;
-  document.getElementById('infoText').innerText = text;
-  document.getElementById('infoModal').style.display = 'flex';
-}
-
-function closeInfoModal(){
-  document.getElementById('infoModal').style.display = 'none';
-  auth.signOut();
-}
-
   document.getElementById('verifyModal').style.display = 'none';
 
   auth.signOut();
@@ -822,6 +815,20 @@ function closeInfoModal(){
   document.getElementById('password').value='';
   document.getElementById('confirmPassword').value='';
 }
+  function showInfoModal(title, text){
+  document.getElementById('infoTitle').innerText = title;
+  document.getElementById('infoText').innerText = text;
+  document.getElementById('infoModal').style.display = 'flex';
+}
+
+function closeInfoModal(){
+  document.getElementById('infoModal').style.display = 'none';
+  auth.signOut();
+
+  document.getElementById('authSection').style.display = 'block';
+  document.getElementById('calcSection').style.display = 'none';
+}
+
 
 // ===================== Admin functions =====================
 function loadPendingUsers(){
@@ -931,11 +938,7 @@ auth.onAuthStateChanged(user=>{
   // Refresh user to get latest verification status
   user.reload().then(()=>{
    if(!user.emailVerified){
-showInfoModal(
-  "Account Created",
-  "A verification link has been sent to your email. Please verify and login again."
-);
-
+  showVerifyModal();
   return;
 }
 
@@ -1010,14 +1013,15 @@ document.getElementById('sendResetBtn').onclick = () => {
     return;
   }
 
- auth.sendPasswordResetEmail(email)
-.then(() => {
-  showInfoModal(
-    "Password Reset Sent",
-    "If this email is registered, a password reset link has been sent. Please login again after resetting."
-  );
-})
-tch(err => {
+auth.sendPasswordResetEmail(email)
+  .then(() => {
+    showInfoModal(
+      "Password Reset Sent",
+      "If this email is registered, a password reset link has been sent. Please login again."
+    );
+  })
+
+  .catch(err => {
     msgEl.innerText = err.message;
 
     });
