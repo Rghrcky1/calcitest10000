@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator3 </h1>
+    <h1>R-Calculator </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -403,10 +403,11 @@ function clearCalc(){document.getElementById('risk').value='';document.getElemen
 // ===================== Modal & Local / Cloud =====================
 function openModal(){
   // reset fields every time modal opens
-document.getElementById('pairCode').value = '';
-document.getElementById('pointValue').value = '';
-document.getElementById('pipValue').value = '';
-document.getElementById('commission').value = '';
+document.getElementById('editName').value = '';
+document.getElementById('editPoint').value = '';
+document.getElementById('editPip').value = '';
+document.getElementById('editCommission').value = '';
+
 
   document.getElementById('modal').style.display='flex';
   document.getElementById('stepUnlock')?.remove();
