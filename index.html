@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator2 </h1>
+    <h1>R-Calculator3 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -908,6 +908,14 @@ function closeAdmin(){
 
 /* ===== END ADMIN MODAL FUNCTIONS ===== */
 
+function showApprovalModal(){
+  document.getElementById('approvalModal').style.display = 'flex';
+}
+
+function closeApprovalModal(){
+  document.getElementById('approvalModal').style.display = 'none';
+  auth.signOut();
+}
 
 
 
