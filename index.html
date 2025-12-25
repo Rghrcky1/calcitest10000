@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator1 </h1>
+    <h1>R-Calculator2 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -402,8 +402,7 @@ function clearCalc(){document.getElementById('risk').value='';document.getElemen
 
 // ===================== Modal & Local / Cloud =====================
 
-  function resetPairModalUI(){
-  document.getElementById('editor').style.display = 'none';
+ function resetPairModalUI(){
   document.getElementById('syncArea').style.display = 'none';
   document.getElementById('adminGate').style.display = 'none';
   document.getElementById('adminPanel').style.display = 'none';
@@ -927,6 +926,7 @@ function openAdminGate(){
   document.getElementById('modal').style.display = 'flex';
 
   document.getElementById('pairModalTitle').innerText = "Admin Panel";
+  document.getElementById('editor').style.display = 'none';
   document.getElementById('adminGate').style.display = 'block';
   document.getElementById('adminPw').value = '';
 }
