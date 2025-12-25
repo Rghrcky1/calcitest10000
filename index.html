@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator1 </h1>
+    <h1>R-Calculator2 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -984,11 +984,16 @@ function closeAdmin(){
 
 // ===================== Admin Popup Functions =====================
 function openAdminPopup(){
+  // Close main Add/Edit/Sync modal if open
+  document.getElementById('modal').style.display = 'none';
+
+  // Open Admin Panel popup
   document.getElementById('adminPopup').style.display = 'flex';
   document.getElementById('adminPopupGate').style.display = 'block';
   document.getElementById('adminPopupContent').style.display = 'none';
   document.getElementById('adminPopupPw').value = '';
 }
+
 
 function closeAdminPopup(){
   document.getElementById('adminPopup').style.display = 'none';
