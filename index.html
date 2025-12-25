@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator23 </h1>
+    <h1>R-Calculator2 </h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -923,9 +923,9 @@ function approveUser(uid){
 /* ===== ADMIN MODAL FUNCTIONS (ADD HERE) ===== */
 
 function openAdminGate(){
-  document.getElementById('pairModalTitle').innerText = "Admin Panel";
-  resetPairModalUI();
+  resetPairModalUI(); // ← FIRST
 
+  document.getElementById('pairModalTitle').innerText = "Admin Panel";
   document.getElementById('adminGate').style.display = 'block';
   document.getElementById('adminPw').value = '';
 }
