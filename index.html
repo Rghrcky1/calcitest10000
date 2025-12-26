@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator1</h1>
+    <h1>R-Calculator2</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -1075,6 +1075,12 @@ function moveDown(name){
 
 // ===================== Delete / Edit Popup =====================
 function openDeleteEditPopup(){
+
+  // ✅ CLOSE Add / Edit / Sync modal FIRST
+  const mainModal = document.getElementById('modal');
+  mainModal.style.display = 'none';
+  mainModal.setAttribute('aria-hidden','true');
+
   const wrap = document.getElementById('deleteEditList');
   wrap.innerHTML = '';
 
@@ -1095,8 +1101,8 @@ function openDeleteEditPopup(){
       edit.className = 'small-btn';
       edit.textContent = 'Edit';
       edit.onclick = ()=>{
-        document.getElementById('deleteEditPopup').style.display='none';
-        document.getElementById('editor').style.display='block';
+        closeDeleteEditPopup();
+        openModal();
 
         document.getElementById('editName').value = name;
         document.getElementById('editPoint').value = p.point;
@@ -1148,8 +1154,10 @@ function openDeleteEditPopup(){
     wrap.appendChild(row);
   });
 
+  // ✅ OPEN Delete/Edit popup ONLY
   document.getElementById('deleteEditPopup').style.display='flex';
 }
+
 
 function closeDeleteEditPopup(){
   document.getElementById('deleteEditPopup').style.display = 'none';
