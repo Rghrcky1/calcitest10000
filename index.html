@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator1</h1>
+    <h1>R-Calculator</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -356,12 +356,23 @@ let unsubscribeSnapshot = null;
 function startCloudListener(){
   if(unsubscribeSnapshot) unsubscribeSnapshot();
   unsubscribeSnapshot=db.collection(FIRE_COLLECTION).onSnapshot(snapshot=>{
-    snapshot.forEach(doc=>{
-      const name=doc.id;
-      const data=doc.data();
-      const local=pairs[name];
-      pairs[name]={point:data.point??(local?local.point:0),pip:data.pip??(local?local.pip:0),commission:(local&&local.commission!==undefined)?local.commission:(data.commission??0),order:typeof data.order==='number'?data.order:(local&&typeof local.order==='number'?local.order:null),type:'cloud'};
-    });
+   snapshot.forEach(doc=>{
+  const name = doc.id;
+  const data = doc.data();
+  const local = pairs[name];
+
+  // PRESERVE LOCAL ORDER IF EXISTS
+  const existingOrder = (local && typeof local.order === 'number') ? local.order : (typeof data.order === 'number' ? data.order : Object.keys(pairs).length);
+
+  pairs[name] = {
+    point: data.point ?? (local ? local.point : 0),
+    pip: data.pip ?? (local ? local.pip : 0),
+    commission: (local && local.commission !== undefined) ? local.commission : (data.commission ?? 0),
+    order: existingOrder,
+    type: 'cloud'
+  };
+});
+
     const cloudIds=new Set(snapshot.docs.map(d=>d.id));
     Object.keys(pairs).forEach(k=>{
       if(pairs[k].type==='cloud'&&!cloudIds.has(k)){
@@ -455,9 +466,8 @@ function saveLocalPair(){
   const commission=parseFloat(document.getElementById('editCommission').value);
   if(!name||isNaN(point)||isNaN(pip)||isNaN(commission)){alert("Enter valid name, point, pip and commission.");return;}
 
-  const order = typeof pairs[name]?.order === 'number'
-    ? pairs[name].order
-    : Object.keys(pairs).length;
+ 
+const order = (pairs[name] && typeof pairs[name].order === 'number') ? pairs[name].order : Object.keys(pairs).length;
 
   const type = pairs[name]?.type === 'cloud' ? 'cloud' : 'local';
 
@@ -1272,7 +1282,10 @@ auth.onAuthStateChanged(user=>{
 }
 
        loadLocalPairs();
-    
+    // Only normalize if some pairs have no order
+if(Object.values(pairs).some(p => typeof p.order !== 'number')){
+  normalizePairOrder();
+}
 populateDropdown();
 startCloudListener();
     });
