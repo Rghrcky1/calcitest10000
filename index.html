@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator</h1>
+    <h1>R-Calculator1</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -1100,7 +1100,6 @@ function normalizePairOrder(){
 
 // ===================== Delete / Edit Popup =====================
 function openDeleteEditPopup(){
-normalizePairOrder();
   // ✅ CLOSE Add / Edit / Sync modal FIRST
   const mainModal = document.getElementById('modal');
   mainModal.style.display = 'none';
@@ -1273,7 +1272,9 @@ auth.onAuthStateChanged(user=>{
 }
 
        loadLocalPairs();
-normalizePairOrder();
+      if(Object.values(pairs).some(p => typeof p.order !== 'number')){
+  normalizePairOrder();
+}
 populateDropdown();
 startCloudListener();
     });
