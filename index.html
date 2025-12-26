@@ -1272,9 +1272,7 @@ auth.onAuthStateChanged(user=>{
 }
 
        loadLocalPairs();
-      if(Object.values(pairs).some(p => typeof p.order !== 'number')){
-  normalizePairOrder();
-}
+    
 populateDropdown();
 startCloudListener();
     });
