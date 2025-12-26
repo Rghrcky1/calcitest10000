@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator2</h1>
+    <h1>R-Calculator1</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -237,7 +237,18 @@ button.secondary{background:#eee;color:#111}
     </div>
   </div>
 </div>
+<!-- DELETE / EDIT POPUP MODAL -->
+<div id="deleteEditPopup" class="modal" style="display:none;">
+  <div class="panel" role="dialog" aria-modal="true" style="max-width:720px;">
+    <h3>Delete / Edit Pairs</h3>
 
+    <div id="deleteEditList" class="pair-list" style="margin-top:12px"></div>
+
+    <div style="margin-top:12px">
+      <button class="secondary" onclick="closeDeleteEditPopup()">Close</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal Editor -->
 <div id="modal" class="modal" aria-hidden="true">
@@ -256,7 +267,8 @@ button.secondary{background:#eee;color:#111}
     <div class="row" style="margin-top:8px">
   <button onclick="saveLocalPair()">Save Local</button>
   
-   <button class="secondary" onclick="openDeleteEdit()">Delete / Edit</button>
+   <button class="secondary" onclick="openDeleteEditPopup()">Delete / Edit</button>
+
 </div>
 
 <div class="row" style="margin-top:8px">
@@ -266,14 +278,6 @@ button.secondary{background:#eee;color:#111}
 
       <div style="margin-top:8px">
         <button class="secondary" onclick="closeModal()">Close</button>
-      </div>
-      
-      <div id="deArea" style="display:none;margin-top:12px">
-        <div class="small">Pairs (C = cloud, L = local)</div>
-        <div id="deList" class="pair-list"></div>
-        <div class="row" style="margin-top:8px">
-          <button class="secondary" onclick="closeDeleteEdit()">Close</button>
-        </div>
       </div>
     </div>
   </div>
@@ -640,104 +644,7 @@ function pushSelectedToCloud(){
   alert("Selected pairs pushed to cloud.");
 }
 
-// ===================== Delete / Edit =====================
-function openDeleteEdit(){
-const wrap=document.getElementById('deList');
-wrap.innerHTML='';
 
-
-getOrderedKeys().forEach(name=>{
-const div=document.createElement('div');
-div.className='pair-item';
-
-
-const label=document.createElement('span');
-label.textContent=`${name} (${pairs[name].type==='cloud'?'C':'L'})`;
-
-
-const btns=document.createElement('div');
-
-
-// DELETE — ONLY LOCAL
-if(pairs[name].type !== 'cloud'){
-const del=document.createElement('button');
-del.className='small-btn';
-del.textContent='Delete';
-del.onclick=()=>{
-if(confirm("Delete "+name+"?")){
-delete pairs[name];
-saveLocalPairs();
-populateDropdown();
-openDeleteEdit();
-}
-};
-btns.appendChild(del);
-}
-
-
-// MOVE UP
-const up=document.createElement('button');
-up.className='small-btn';
-up.textContent='↑';
-up.onclick=()=>moveUp(name);
-
-
-// MOVE DOWN
-const down=document.createElement('button');
-down.className='small-btn';
-down.textContent='↓';
-down.onclick=()=>moveDown(name);
-
-
-btns.appendChild(up);
-btns.appendChild(down);
-
-
-div.appendChild(label);
-div.appendChild(btns);
-wrap.appendChild(div);
-});
-
-
-document.getElementById('deArea').style.display='block';
-}
-function closeDeleteEdit(){document.getElementById('deArea').style.display='none';}
-function getOrderedKeys(){
-  return Object.keys(pairs)
-    .map((k,i) => ({
-      k,
-      order: typeof pairs[k].order === 'number' ? pairs[k].order : i
-    }))
-    .sort((a,b) => a.order - b.order)
-    .map(o => o.k);
-}
-function applyOrderFromArray(arr){
-  arr.forEach((k,i)=>{
-    pairs[k].order = i;
-  });
-}
-function moveUp(name){
-  const arr = getOrderedKeys();
-  const idx = arr.indexOf(name);
-  if(idx > 0){
-    [arr[idx-1], arr[idx]] = [arr[idx], arr[idx-1]];
-    applyOrderFromArray(arr);
-    saveLocalPairs();
-    populateDropdown();
-    openDeleteEdit();
-  }
-}
-function moveDown(name){
-  const arr = getOrderedKeys();
-  const idx = arr.indexOf(name);
-  if(idx < arr.length - 1){
-    [arr[idx+1], arr[idx]] = [arr[idx], arr[idx+1]];
-    applyOrderFromArray(arr);
-    saveLocalPairs();
-    populateDropdown();
-    openDeleteEdit();
-  }
-}
 
 // ===================== Login / Signup / Logout =====================
 function login(){
@@ -1121,6 +1028,67 @@ function loadAdminApprovalList(){
         list.appendChild(div);
       });
     });
+}
+// ===================== Delete / Edit Popup =====================
+function openDeleteEditPopup(){
+  // Close Add/Edit/Sync modal if open
+  document.getElementById('modal').style.display = 'none';
+
+  const list = document.getElementById('deleteEditList');
+  list.innerHTML = '';
+
+  Object.keys(pairs).sort().forEach(name=>{
+    const p = pairs[name];
+    const row = document.createElement('div');
+    row.className = 'pair-item';
+
+    const label = document.createElement('span');
+    label.textContent = `${name} (${p.type === 'cloud' ? 'C' : 'L'})`;
+
+    const btns = document.createElement('div');
+
+    // EDIT
+    const editBtn = document.createElement('button');
+    editBtn.className = 'small-btn';
+    editBtn.textContent = 'Edit';
+    editBtn.onclick = () => {
+      document.getElementById('deleteEditPopup').style.display = 'none';
+      openModal();
+      document.getElementById('editName').value = name;
+      document.getElementById('editPoint').value = p.point;
+      document.getElementById('editPip').value = p.pip;
+      document.getElementById('editCommission').value = p.commission;
+    };
+
+    // DELETE
+    const delBtn = document.createElement('button');
+    delBtn.className = 'small-btn';
+    delBtn.textContent = 'Delete';
+    delBtn.onclick = () => {
+      if(!confirm(`Delete pair ${name}?`)) return;
+
+      if(p.type === 'cloud'){
+        db.collection(FIRE_COLLECTION).doc(name).delete();
+      }
+      delete pairs[name];
+      saveLocalPairs();
+      populateDropdown();
+      openDeleteEditPopup(); // refresh popup
+    };
+
+    btns.appendChild(editBtn);
+    btns.appendChild(delBtn);
+
+    row.appendChild(label);
+    row.appendChild(btns);
+    list.appendChild(row);
+  });
+
+  document.getElementById('deleteEditPopup').style.display = 'flex';
+}
+
+function closeDeleteEditPopup(){
+  document.getElementById('deleteEditPopup').style.display = 'none';
 }
 
 
