@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator</h1>
+    <h1>R-Calculator1</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -1029,11 +1029,52 @@ function loadAdminApprovalList(){
       });
     });
 }
+  function getOrderedKeys(){
+  return Object.keys(pairs)
+    .map(name => ({
+      name,
+      order: typeof pairs[name].order === 'number'
+        ? pairs[name].order
+        : 9999
+    }))
+    .sort((a,b)=>a.order-b.order)
+    .map(o=>o.name);
+}
+
+function moveUp(name){
+  const keys = getOrderedKeys();
+  const i = keys.indexOf(name);
+  if(i <= 0) return;
+
+  const a = keys[i];
+  const b = keys[i-1];
+
+  const tmp = pairs[a].order;
+  pairs[a].order = pairs[b].order;
+  pairs[b].order = tmp;
+
+  saveLocalPairs();
+  populateDropdown();
+}
+
+function moveDown(name){
+  const keys = getOrderedKeys();
+  const i = keys.indexOf(name);
+  if(i === -1 || i === keys.length-1) return;
+
+  const a = keys[i];
+  const b = keys[i+1];
+
+  const tmp = pairs[a].order;
+  pairs[a].order = pairs[b].order;
+  pairs[b].order = tmp;
+
+  saveLocalPairs();
+  populateDropdown();
+}
+
 // ===================== Delete / Edit Popup =====================
 function openDeleteEditPopup(){
-  // ❌ DO NOT close main modal
-  // document.getElementById('modal').style.display = 'none';
-
   const wrap = document.getElementById('deleteEditList');
   wrap.innerHTML = '';
 
@@ -1044,18 +1085,18 @@ function openDeleteEditPopup(){
     row.className = 'pair-item';
 
     const label = document.createElement('span');
-    label.textContent = `${name} (${p.type === 'cloud' ? 'C' : 'L'})`;
+    label.textContent = `${name} (${p.type==='cloud'?'C':'L'})`;
 
     const btns = document.createElement('div');
 
-    // ===== LOCAL ONLY: EDIT =====
-    if(p.type !== 'cloud'){
+    // LOCAL → EDIT
+    if(p.type === 'local'){
       const edit = document.createElement('button');
       edit.className = 'small-btn';
       edit.textContent = 'Edit';
       edit.onclick = ()=>{
-        closeDeleteEditPopup();
-        document.getElementById('editor').style.display = 'block';
+        document.getElementById('deleteEditPopup').style.display='none';
+        document.getElementById('editor').style.display='block';
 
         document.getElementById('editName').value = name;
         document.getElementById('editPoint').value = p.point;
@@ -1065,8 +1106,8 @@ function openDeleteEditPopup(){
       btns.appendChild(edit);
     }
 
-    // ===== LOCAL ONLY: DELETE =====
-    if(p.type !== 'cloud'){
+    // LOCAL → DELETE
+    if(p.type === 'local'){
       const del = document.createElement('button');
       del.className = 'small-btn';
       del.textContent = 'Delete';
@@ -1075,13 +1116,13 @@ function openDeleteEditPopup(){
           delete pairs[name];
           saveLocalPairs();
           populateDropdown();
-          openDeleteEditPopup(); // refresh list
+          openDeleteEditPopup();
         }
       };
       btns.appendChild(del);
     }
 
-    // ===== MOVE UP =====
+    // MOVE UP
     const up = document.createElement('button');
     up.className = 'small-btn';
     up.textContent = '↑';
@@ -1090,7 +1131,7 @@ function openDeleteEditPopup(){
       openDeleteEditPopup();
     };
 
-    // ===== MOVE DOWN =====
+    // MOVE DOWN
     const down = document.createElement('button');
     down.className = 'small-btn';
     down.textContent = '↓';
@@ -1107,9 +1148,8 @@ function openDeleteEditPopup(){
     wrap.appendChild(row);
   });
 
-  document.getElementById('deleteEditPopup').style.display = 'flex';
+  document.getElementById('deleteEditPopup').style.display='flex';
 }
-
 
 function closeDeleteEditPopup(){
   document.getElementById('deleteEditPopup').style.display = 'none';
