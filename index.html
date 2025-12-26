@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator2</h1>
+    <h1>R-Calculator</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -1031,8 +1031,8 @@ function loadAdminApprovalList(){
 }
 // ===================== Delete / Edit Popup =====================
 function openDeleteEditPopup(){
-  // Close main modal
-  document.getElementById('modal').style.display = 'none';
+  // ❌ DO NOT close main modal
+  // document.getElementById('modal').style.display = 'none';
 
   const wrap = document.getElementById('deleteEditList');
   wrap.innerHTML = '';
@@ -1055,7 +1055,8 @@ function openDeleteEditPopup(){
       edit.textContent = 'Edit';
       edit.onclick = ()=>{
         closeDeleteEditPopup();
-        openModal();
+        document.getElementById('editor').style.display = 'block';
+
         document.getElementById('editName').value = name;
         document.getElementById('editPoint').value = p.point;
         document.getElementById('editPip').value = p.pip;
@@ -1074,7 +1075,7 @@ function openDeleteEditPopup(){
           delete pairs[name];
           saveLocalPairs();
           populateDropdown();
-          openDeleteEditPopup(); // refresh
+          openDeleteEditPopup(); // refresh list
         }
       };
       btns.appendChild(del);
