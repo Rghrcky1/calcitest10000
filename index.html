@@ -114,7 +114,7 @@ button.secondary{background:#eee;color:#111}
 
 <div class="wrap">
   <div class="card">
-    <h1>R-Calculator2</h1>
+    <h1>R-Calculator</h1>
 
     <!-- Authentication Section -->
     <div id="authSection">
@@ -1072,10 +1072,35 @@ function moveDown(name){
   saveLocalPairs();
   populateDropdown();
 }
+  function reorderPairs(from, to){
+  const keys = getOrderedKeys();
+  const fromIndex = keys.indexOf(from);
+  const toIndex = keys.indexOf(to);
+
+  if(fromIndex === -1 || toIndex === -1) return;
+
+  keys.splice(fromIndex, 1);
+  keys.splice(toIndex, 0, from);
+
+  keys.forEach((k,i)=>{
+    pairs[k].order = i;
+  });
+
+  saveLocalPairs();
+  populateDropdown();
+}
+
+function normalizePairOrder(){
+  let i = 0;
+  getOrderedKeys().forEach(name=>{
+    pairs[name].order = i++;
+  });
+  saveLocalPairs();
+}
 
 // ===================== Delete / Edit Popup =====================
 function openDeleteEditPopup(){
-
+normalizePairOrder();
   // ✅ CLOSE Add / Edit / Sync modal FIRST
   const mainModal = document.getElementById('modal');
   mainModal.style.display = 'none';
@@ -1088,7 +1113,35 @@ function openDeleteEditPopup(){
     const p = pairs[name];
 
     const row = document.createElement('div');
-    row.className = 'pair-item';
+row.className = 'pair-item';
+row.draggable = true;
+row.dataset.name = name;
+row.addEventListener('dragstart', e=>{
+  e.dataTransfer.setData('text/plain', name);
+});
+
+row.addEventListener('dragover', e=>{
+  e.preventDefault();
+  row.style.background = '#e8f0ff';
+});
+
+row.addEventListener('dragleave', ()=>{
+  row.style.background = '';
+});
+
+row.addEventListener('drop', e=>{
+  e.preventDefault();
+  row.style.background = '';
+
+  const from = e.dataTransfer.getData('text/plain');
+  const to = name;
+
+  if(from === to) return;
+
+  reorderPairs(from, to);
+  openDeleteEditPopup();
+});
+
 
     const label = document.createElement('span');
     label.textContent = `${name} (${p.type==='cloud'?'C':'L'})`;
@@ -1220,8 +1273,9 @@ auth.onAuthStateChanged(user=>{
 }
 
        loadLocalPairs();
-      populateDropdown();
-      startCloudListener();
+normalizePairOrder();
+populateDropdown();
+startCloudListener();
     });
   });
 
