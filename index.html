@@ -8,1337 +8,209 @@
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="manifest" href="manifest.json">
 
-<!-- Firebase scripts -->
+<!-- Firebase (ONLY CLOUD DB, NO AUTH) -->
 <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
 
 <style>
-  #authSection,
-#calcSection {
-  display: none;
-}
-
-:root{--accent:#007bff;--bg:#f4f6fb;--card:#fff;--muted:#666}
+:root{--accent:#007bff;--bg:#f4f6fb;--card:#fff}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:var(--bg);-webkit-font-smoothing:antialiased}
+html,body{margin:0;font-family:system-ui;background:var(--bg)}
 .wrap{max-width:720px;margin:48px auto;padding:12px}
-.card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 8px 24px rgba(10,10,20,0.06)}
-h1{text-align:center;font-size:20px;margin-bottom:12px}
-label{display:block;margin-top:10px;font-weight:600;color:#222;font-size:14px}
-select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #d6dbe6;font-size:15px;margin-top:6px}
+.card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.06)}
+h1{text-align:center}
+label{display:block;margin-top:10px;font-weight:600}
+select,input,button{width:100%;padding:10px;border-radius:8px;border:1px solid #ddd;margin-top:6px}
 button{background:var(--accent);color:#fff;border:0;cursor:pointer}
 button.secondary{background:#eee;color:#111}
-.small{font-size:13px;color:#666;margin-top:8px}
 .row{display:flex;gap:8px;margin-top:10px}
 .row button{flex:1}
 .pair-list{max-height:260px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;background:#fafafa;margin-top:8px}
-.pair-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid #eee}
-.pair-item:last-child{border-bottom:0}
-.small-btn {
-  padding: 3px 6px;
-  border-radius: 6px;
-  border: 0;
-  background: #eee;
-  color: #111;
-  cursor: pointer;
-  font-size: 12px;
-  margin-left: 4px;
-}
-.pair-item div {
-  display: flex;
-  gap: 2px;
-}
-
-.modal{position:fixed;inset:0;display:none;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.55);z-index:9999;padding:12px;overflow-y:auto;}
-.panel{background:#fff;padding:14px;border-radius:10px;max-height:90vh;overflow-y:auto;max-width:720px;width:100%}
-#lotResult{margin-top:12px;text-align:center;font-weight:700;color:#06204a;font-size:18px;background:#e8f0ff;display:inline-block;padding:6px 12px;border-radius:8px;box-shadow:0 2px 6px rgba(10,20,60,0.06);}
-@media(max-width:480px){.row{flex-direction:column}.row button{width:100%}}
-
-/* ===== AUTH LOADER ===== */
-#loadingScreen {
-  position: fixed;
-  inset: 0;
-  background: #0f0f0f;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-
-.loader {
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  border: 3px dotted #00ffcc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: spin 1.5s linear infinite;
-}
-
-.logo-letter {
-  font-size: 32px;
-  font-weight: bold;
-  color: #00ffcc;
-  animation: counterSpin 1.5s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-@keyframes counterSpin {
-  from { transform: rotate(360deg); }
-  to   { transform: rotate(0deg); }
-}
-
-/* HIDE SECTIONS BY DEFAULT */
-#authSection,
-#calcSection {
-  display: none;
-}
-
+.pair-item{display:flex;justify-content:space-between;align-items:center;padding:6px;border-bottom:1px solid #eee}
+.small-btn{padding:3px 6px;font-size:12px;border-radius:6px;border:0;background:#eee}
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.55)}
+.panel{background:#fff;padding:14px;border-radius:10px;max-width:720px;width:100%}
+#lotResult{margin-top:12px;font-weight:700;background:#e8f0ff;padding:8px;border-radius:8px;text-align:center}
 </style>
 </head>
-<body>
-  <body>
 
-<!-- LOADING SCREEN -->
-<div id="loadingScreen">
-  <div class="loader">
-    <span class="logo-letter">R</span>
-  </div>
-</div>
+<body>
 
 <div class="wrap">
   <div class="card">
     <h1>R-Calculator</h1>
 
-    <!-- Authentication Section -->
-    <div id="authSection">
-      <input id="name" type="text" placeholder="Full Name" style="display:none">
-      <input id="email" type="email" placeholder="Email">
-      <input id="password" type="password" placeholder="Password">
-      <input id="confirmPassword" type="password" placeholder="Confirm Password" style="display:none">
-      <div class="row" style="margin-top:10px">
-        <button id="loginBtn">Login</button>
-        <button id="signupBtn">Sign Up</button>
-        <button id="createBtn" style="display:none">Create</button>
-      </div>
-     <!-- Forgot Password Section -->
-  <div id="forgotSection" style="margin-top:6px;">
-    <button class="secondary" id="forgotBtn">Forgot Password?</button>
-    
-    <!-- Inline Email Input + Send/Cancel Buttons -->
-    <div id="forgotEmailWrap" style="display:none; margin-top:8px;">
-      <input type="email" id="forgotEmail" placeholder="Enter your email">
-      <div class="row" style="margin-top:6px; gap:6px;">
-        <button id="sendResetBtn">Send Reset Link</button>
-        <button class="secondary" id="cancelResetBtn">Cancel</button>
-      </div>
-      <div id="forgotMsg" class="small" style="margin-top:4px;"></div>
-    </div>
-  </div>
+    <!-- CALCULATOR -->
+    <label>Pair</label>
+    <select id="pairSelect"></select>
 
-      <div id="authMsg" class="small"></div>
+    <label>Lot Type</label>
+    <select id="lotType">
+      <option value="standardPoint">Standard Point</option>
+      <option value="miniPoint">Mini Point</option>
+      <option value="microPoint">Micro Point</option>
+      <option value="standardPip">Standard Pip</option>
+      <option value="miniPip">Mini Pip</option>
+      <option value="microPip">Micro Pip</option>
+    </select>
+
+    <label>Risk ($)</label>
+    <input id="risk" type="number">
+
+    <label>Stop Loss</label>
+    <input id="sl" type="number">
+
+    <div class="row">
+      <button onclick="calculateLot()">Calculate</button>
+      <button class="secondary" onclick="clearCalc()">Clear</button>
     </div>
 
-   <!-- Admin Dashboard REMOVED from main page -->
+    <div id="lotResult" style="display:none"></div>
 
-
-    <!-- Calculator Section -->
-    <div id="calcSection" style="display:none; pointer-events:none; opacity:0.5">
-      <label for="pairSelect">Pair</label>
-      <select id="pairSelect"></select>
-      <label for="lotType">Lot type / mode</label>
-      <select id="lotType">
-        <option value="standardPoint">Standard Point Value</option>
-        <option value="miniPoint">Mini Point Value</option>
-        <option value="microPoint">Micro Point Value</option>
-        <option value="standardPip">Standard Pip Value</option>
-        <option value="miniPip">Mini Pip Value</option>
-        <option value="microPip">Micro Pip Value</option>
-      </select>
-      <label for="risk">Risk ($)</label>
-      <input id="risk" type="number" placeholder="e.g. 30">
-      <label for="sl">Stop-loss (points / pips)</label>
-      <input id="sl" type="number" placeholder="e.g. 15">
-      <div class="row">
-        <button onclick="calculateLot()">Calculate Lot Size</button>
-        <button class="secondary" onclick="clearCalc()">Clear</button>
-      </div>
-  
-      <div id="lotResult" aria-live="polite" style="display:none"></div>
-      <div class="row" style="margin-top:12px">
-        <button class="secondary" onclick="openModal()">Add / Edit / Sync</button>
-        <button class="secondary" id="logoutBtn" onclick="logout()">Logout</button>
-        <button class="secondary" onclick="reloadCloud()">Reload Cloud</button>
-      </div>
-    </div>
-  </div>
-</div>
-<!-- EMAIL VERIFICATION MODAL -->
-<div id="verifyModal" class="modal" style="display:none;">
-  <div class="panel" style="text-align:center;max-width:420px;">
-    <h2 style="margin-top:0;">Verify Your Email</h2>
-    <p class="small" style="font-size:15px;line-height:1.5;">
-      We have sent a verification link to your email.<br>
-      Please verify your email to continue.
-    </p>
-    <button style="margin-top:14px;" onclick="closeVerifyModal()">OK</button>
-  </div>
-</div>
-    <!-- GENERIC INFO MODAL -->
-<div id="infoModal" class="modal" style="display:none;">
-  <div class="panel" style="text-align:center;max-width:420px;">
-    <h2 id="infoTitle" style="margin-top:0;"></h2>
-    <p id="infoText" class="small" style="font-size:15px;line-height:1.5;"></p>
-    <button style="margin-top:14px;" onclick="closeInfoModal()">OK</button>
-  </div>
-</div>
-<!-- ADMIN PANEL POPUP MODAL -->
-<div id="adminPopup" class="modal" style="display:none;">
-  <div class="panel" role="dialog" aria-modal="true" style="max-width:720px;">
-    <h3>Admin Panel</h3>
-
-    <!-- Password Unlock -->
-    <div id="adminPopupGate" style="margin-top:12px">
-      <label>Enter Admin Password</label>
-      <input id="adminPopupPw" type="password" placeholder="Admin password">
-      <div class="row" style="margin-top:8px">
-        <button onclick="unlockAdminPopup()">Unlock</button>
-        <button class="secondary" onclick="closeAdminPopup()">Cancel</button>
-      </div>
-    </div>
-
-    <!-- Admin Tabs -->
-    <div id="adminPopupContent" style="display:none; margin-top:12px">
-      <div class="row">
-        <button id="adminTabSync" onclick="showAdminTab('sync')">Sync Cloud</button>
-        <button id="adminTabApproval" onclick="showAdminTab('approval')">Approvals</button>
-      </div>
-
-      <!-- Sync Cloud Tab -->
-      <div id="adminSyncTab" style="display:none; margin-top:12px">
-       
-        <div id="adminSyncList" class="pair-list" style="margin-top:8px"></div>
-      </div>
-
-      <!-- Approvals Tab -->
-      <div id="adminApprovalTab" style="display:none; margin-top:12px">
-        <div id="adminApprovalList" class="pair-list"></div>
-      </div>
-
-      <div style="margin-top:12px">
-        <button class="secondary" onclick="closeAdminPopup()">Close</button>
-      </div>
-    </div>
-  </div>
-</div>
-<!-- DELETE / EDIT POPUP MODAL -->
-<div id="deleteEditPopup" class="modal" style="display:none;">
-  <div class="panel" role="dialog" aria-modal="true" style="max-width:720px;">
-    <h3>Delete / Edit Pairs</h3>
-
-    <div id="deleteEditList" class="pair-list" style="margin-top:12px"></div>
-
-    <div style="margin-top:12px">
-      <button class="secondary" onclick="closeDeleteEditPopup()">Close</button>
+    <div class="row" style="margin-top:12px">
+      <button class="secondary" onclick="openModal()">Add / Edit Pairs</button>
+      <button class="secondary" onclick="reloadCloud()">Reload Cloud</button>
     </div>
   </div>
 </div>
 
-<!-- Modal Editor -->
-<div id="modal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-modal="true">
-    <h3>Add / Edit / Sync Pairs</h3>
-    
-    <div id="editor" style="display:none;margin-top:12px">
-      <label>Pair code (e.g. EURUSD)</label>
-      <input id="editName" placeholder="PAIR (uppercase)">
-      <label>Point value (1 standard lot)</label>
-      <input id="editPoint" type="number" placeholder="point">
-      <label>Pip value (1 standard lot)</label>
-      <input id="editPip" type="number" placeholder="pip">
-      <label>Commission ($ per 1 lot)</label>
-      <input id="editCommission" type="number" placeholder="commission">
-    <div class="row" style="margin-top:8px">
-  <button onclick="saveLocalPair()">Save Local</button>
-  
-   <button class="secondary" onclick="openDeleteEditPopup()">Delete / Edit</button>
+<!-- PAIR MODAL -->
+<div id="modal" class="modal">
+  <div class="panel">
+    <h3>Manage Pairs</h3>
 
-</div>
+    <label>Pair</label>
+    <input id="editName">
 
-<div class="row" style="margin-top:8px">
-  <button class="secondary" id="adminPanelBtn" style="display:none" onclick="openAdminPopup()">Admin Panel</button>
+    <label>Point Value</label>
+    <input id="editPoint" type="number">
 
-</div>
+    <label>Pip Value</label>
+    <input id="editPip" type="number">
 
-      <div style="margin-top:8px">
-        <button class="secondary" onclick="closeModal()">Close</button>
-      </div>
+    <label>Commission</label>
+    <input id="editCommission" type="number">
+
+    <div class="row">
+      <button onclick="savePair()">Save</button>
+      <button class="secondary" onclick="closeModal()">Close</button>
     </div>
+
+    <div id="pairList" class="pair-list"></div>
   </div>
 </div>
 
 <script>
-// ===================== Firebase Projects =====================
-
-// Auth Project
-const authApp = firebase.initializeApp({
-  apiKey: "AIzaSyBf-D1KYMJ_b3_1Dog7AkJ8b0MST0fD_9g",
-  authDomain: "auth-9bef7.firebaseapp.com",
-  projectId: "auth-9bef7",
-  storageBucket: "auth-9bef7.firebasestorage.app",
-  messagingSenderId: "27179558968",
-  appId: "1:27179558968:web:cbc4c3b162ea2114c11ecd"
-}, "authApp");
-const auth = authApp.auth();
-const authDb = authApp.firestore();
-
-// Cloud Project
-const cloudApp = firebase.initializeApp({
+// ================= FIREBASE =================
+firebase.initializeApp({
   apiKey: "AIzaSyAnt7Ctex3Eom36UTt1PzkOw1vCSXNBEzk",
   authDomain: "lotcalci.firebaseapp.com",
-  projectId: "lotcalci",
-  storageBucket: "lotcalci.firebasestorage.app",
-  messagingSenderId: "662389905318",
-  appId: "1:662389905318:web:3b9963ab853374ee606167"
-}, "cloudApp");
-const db = cloudApp.firestore();
-
-// ===================== Global Vars =====================
-const CLOUD_PASSWORD="123456";
-  
-  const LOCAL_KEY="fx_pairs_v_final";
-const FIRE_COLLECTION="cloudPairs";
-  
-let pairs={};
-let USER_APPROVED = false;
-let adminUnlocked = false;
-// ===================== Load / Save Pairs =====================
-const defaultPairs = {};
-
-function loadLocalPairs(){
-  const raw = localStorage.getItem(LOCAL_KEY);
-  const saved = raw ? JSON.parse(raw) : {};
-  pairs = JSON.parse(JSON.stringify(defaultPairs));
-  Object.keys(saved).forEach(k=>pairs[k]=saved[k]);
-}
-
-function saveLocalPairs(){
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(pairs));
-}
-
-function populateDropdown(){
-  const sel=document.getElementById('pairSelect');
-  if(!sel) return;
-  sel.innerHTML='';
-  const list=Object.keys(pairs).map(name=>({name,order:typeof pairs[name].order==='number'?pairs[name].order:null}));
-  list.sort((a,b)=>{
-    if(a.order!==null&&b.order!==null) return a.order-b.order;
-    if(a.order!==null) return -1;
-    if(b.order!==null) return 1;
-    return a.name.localeCompare(b.name);
-  });
-  list.forEach(({name})=>{
-    const opt=document.createElement('option');
-    opt.value=name;
-    opt.text=pairs[name].type==='cloud'?`${name} (C)`:`${name} (L)`;
-    sel.appendChild(opt);
-  });
-}
-
-// ===================== Cloud Listener =====================
-let unsubscribeSnapshot = null;
-function startCloudListener(){
-  if(unsubscribeSnapshot) unsubscribeSnapshot();
-  unsubscribeSnapshot=db.collection(FIRE_COLLECTION).onSnapshot(snapshot=>{
-   snapshot.forEach(doc=>{
-  const name = doc.id;
-  const data = doc.data();
-  const local = pairs[name];
-
-  // PRESERVE LOCAL ORDER IF EXISTS
-  const existingOrder = (local && typeof local.order === 'number') ? local.order : (typeof data.order === 'number' ? data.order : Object.keys(pairs).length);
-
-  pairs[name] = {
-    point: data.point ?? (local ? local.point : 0),
-    pip: data.pip ?? (local ? local.pip : 0),
-    commission: (local && local.commission !== undefined) ? local.commission : (data.commission ?? 0),
-    order: existingOrder,
-    type: 'cloud'
-  };
+  projectId: "lotcalci"
 });
+const db = firebase.firestore();
+const FIRE_COLLECTION="cloudPairs";
 
-    const cloudIds=new Set(snapshot.docs.map(d=>d.id));
-    Object.keys(pairs).forEach(k=>{
-      if(pairs[k].type==='cloud'&&!cloudIds.has(k)){
-        if(defaultPairs[k]) pairs[k]=JSON.parse(JSON.stringify(defaultPairs[k]));
-        else delete pairs[k];
-      }
+// ================= DATA =================
+let pairs={};
+const LOCAL_KEY="fx_pairs_open";
+
+// ================= LOAD =================
+function loadLocal(){
+  pairs = JSON.parse(localStorage.getItem(LOCAL_KEY) || "{}");
+}
+function saveLocal(){
+  localStorage.setItem(LOCAL_KEY,JSON.stringify(pairs));
+}
+function populate(){
+  const sel=document.getElementById("pairSelect");
+  sel.innerHTML="";
+  Object.keys(pairs).forEach(n=>{
+    const o=document.createElement("option");
+    o.value=n;o.textContent=n;
+    sel.appendChild(o);
+  });
+  renderList();
+}
+
+// ================= CLOUD =================
+function reloadCloud(){
+  db.collection(FIRE_COLLECTION).get().then(snap=>{
+    snap.forEach(d=>{
+      pairs[d.id]={...d.data()};
     });
-    saveLocalPairs();
-    populateDropdown();
-  },err=>{console.warn("cloud listener error:",err)});
+    saveLocal();populate();
+  });
 }
 
-// ===================== Calculator =====================
+// ================= CALC =================
 function calculateLot(){
-  if(!USER_APPROVED){
-    alert("Waiting for admin approval");
-    return;
-  }
-
-  const name=document.getElementById('pairSelect').value;
-  const lotType=document.getElementById('lotType').value;
-  const risk=parseFloat(document.getElementById('risk').value);
-  const sl=parseFloat(document.getElementById('sl').value);
-  if(!name||isNaN(risk)||isNaN(sl)||risk<=0||sl<=0){document.getElementById('lotResult').style.display='none';return;}
-  const p=pairs[name];
-  if(!p){document.getElementById('lotResult').style.display='none';return;}
-  const comm=Number(p.commission||0);
+  const p=pairs[pairSelect.value];
+  if(!p)return;
+  const risk=+riskInput.value||+risk.value;
+  const slv=+sl.value;
   let v=0;
-  switch(lotType){
-    case "standardPoint": v=p.point; break;
-    case "miniPoint": v=p.point/10; break;
-    case "microPoint": v=p.point/100; break;
-    case "standardPip": v=p.pip; break;
-    case "miniPip": v=p.pip/10; break;
-    case "microPip": v=p.pip/100; break;
+  switch(lotType.value){
+    case "standardPoint":v=p.point;break;
+    case "miniPoint":v=p.point/10;break;
+    case "microPoint":v=p.point/100;break;
+    case "standardPip":v=p.pip;break;
+    case "miniPip":v=p.pip/10;break;
+    case "microPip":v=p.pip/100;break;
   }
-  const lot=risk/(sl*v+comm);
-  const amt=lot*sl*v, comAmt=lot*comm, total=amt+comAmt;
-  const el=document.getElementById('lotResult');
-  el.innerHTML=`<span style="font-size:19px;font-weight:700;">LotSize = ${lot.toFixed(2)}</span>
-  <span style="font-size:14px;margin-left:6px;">(Amt=${amt.toFixed(2)}, Com=${comAmt.toFixed(2)}, Total=${total.toFixed(2)})</span>`;
-  el.style.display='inline-block';
+  const lot=risk/(slv*v+p.commission);
+  lotResult.style.display="block";
+  lotResult.innerText="Lot Size: "+lot.toFixed(2);
 }
-function clearCalc(){document.getElementById('risk').value='';document.getElementById('sl').value='';document.getElementById('lotResult').style.display='none';}
+function clearCalc(){
+  risk.value="";sl.value="";
+  lotResult.style.display="none";
+}
 
-// ===================== Modal & Local / Cloud =====================
+// ================= MODAL =================
 function openModal(){
-  // reset fields every time modal opens
-document.getElementById('editName').value = '';
-document.getElementById('editPoint').value = '';
-document.getElementById('editPip').value = '';
-document.getElementById('editCommission').value = '';
-
-
-  document.getElementById('modal').style.display='flex';
-  document.getElementById('stepUnlock')?.remove();
-  document.getElementById('editor').style.display='block';
-  document.getElementById('adminPanelBtn').style.display = 'none';
-
-  if(window.IS_ADMIN){
-    document.getElementById('adminPanelBtn').style.display = 'block';
-  }
-}
-// ===== Reset all modal sections =====
-function resetModalSections() {
-    document.getElementById('editor').style.display = 'none';
-    document.getElementById('deArea').style.display = 'none';
-    document.getElementById('syncArea').style.display = 'none';
-    document.getElementById('adminGate').style.display = 'none';
-    document.getElementById('adminPanel').style.display = 'none';
-    document.getElementById('adminPw').value = '';
+  modal.style.display="flex";
+  renderList();
 }
 function closeModal(){
-  document.getElementById('modal').style.display='none';
-
-  closeSyncArea();
-  closeDeleteEdit();
-
-  // reset admin modal state
-  document.getElementById('adminGate').style.display = 'none';
-  document.getElementById('adminPanel').style.display = 'none';
-  document.getElementById('adminPw').value = '';
+  modal.style.display="none";
 }
 
-
-// ===================== Save / Sync / Delete =====================
-function saveLocalPair(){
-  const name=(document.getElementById('editName').value||'').toUpperCase().trim();
-  const point=parseFloat(document.getElementById('editPoint').value);
-  const pip=parseFloat(document.getElementById('editPip').value);
-  const commission=parseFloat(document.getElementById('editCommission').value);
-  if(!name||isNaN(point)||isNaN(pip)||isNaN(commission)){alert("Enter valid name, point, pip and commission.");return;}
-
- 
-const order = (pairs[name] && typeof pairs[name].order === 'number') ? pairs[name].order : Object.keys(pairs).length;
-
-  const type = pairs[name]?.type === 'cloud' ? 'cloud' : 'local';
-
-  pairs[name]={ point, pip, commission, type, order };
-
-  saveLocalPairs();
-  populateDropdown();
-  // reset add/edit fields
-document.getElementById('editName').value = '';
-document.getElementById('editPoint').value = '';
-document.getElementById('editPip').value = '';
-document.getElementById('editCommission').value = '';
-// CLOSE add/edit modal FIRST
-document.getElementById('modal').style.display = 'none';
-  showInfoModal(
-  "Saved Successfully",
-  `Local pair "${name}" saved successfully.`
-);
-
-}
-
-// ===================== Cloud Sync =====================
-let cloudUnlocked=false;
-function openSyncCloudAdmin(){
-  cloudUnlocked = true; // Admin bypass
-  const syncArea = document.getElementById('syncArea');
-  const syncListWrap = document.getElementById('syncListWrap');
-
-  // Show sync area
-  syncArea.style.display = 'block';
-  syncListWrap.style.display = 'block';
-
-  // Populate local and cloud pairs
-  const wrap = document.getElementById('syncList');
-  wrap.innerHTML = '';
-
-  Object.keys(pairs).sort().forEach(name => {
-    const p = pairs[name];
-    const div = document.createElement('div');
-    div.className = 'pair-item';
-
-    const span = document.createElement('span');
-    span.textContent = `${name} (${p.type==='cloud'?'C':'L'})`;
-
-    const btns = document.createElement('div');
-
-    if(p.type === 'local'){
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.dataset.name = name;
-      btns.appendChild(cb);
-    } else if(p.type === 'cloud'){
-      const edit = document.createElement('button');
-      edit.className = 'small-btn';
-      edit.textContent = 'Edit';
-      edit.onclick = () => openEditCloudPair(name);
-
-      const del = document.createElement('button');
-      del.className = 'small-btn';
-      del.textContent = 'Delete';
-      del.onclick = () => {
-        if(confirm("Delete cloud pair "+name+"?")){
-          db.collection(FIRE_COLLECTION).doc(name).delete();
-          delete pairs[name];
-          saveLocalPairs();
-          openSyncCloudAdmin();
-        }
-      };
-
-      btns.appendChild(edit);
-      btns.appendChild(del);
-    }
-
-    div.appendChild(span);
-    div.appendChild(btns);
-    wrap.appendChild(div);
-  });
-}
-function openEditCloudPair(name){
-  const modal = document.getElementById('modal');
-  modal.style.display = 'flex';
-
-  const editor = document.getElementById('editor');
-  editor.style.display = 'block';
-
-  document.getElementById('editName').value = name;
-  document.getElementById('editPoint').value = pairs[name].point;
-  document.getElementById('editPip').value = pairs[name].pip;
-  document.getElementById('editCommission').value = pairs[name].commission;
-
-  // Add buttons: Save, Clear, Close
-  const existingBtns = document.getElementById('editorBtns');
-  if(existingBtns) existingBtns.remove();
-
-  const btnDiv = document.createElement('div');
-  btnDiv.id = 'editorBtns';
-  btnDiv.className = 'row';
-  btnDiv.style.marginTop = '8px';
-
-  const saveBtn = document.createElement('button');
-  saveBtn.textContent = 'Save';
-  saveBtn.onclick = () => saveCloudEdit(name);
-
-  const clearBtn = document.createElement('button');
-  clearBtn.textContent = 'Clear';
-  clearBtn.className = 'secondary';
-  clearBtn.onclick = () => {
-    document.getElementById('editPoint').value = '';
-    document.getElementById('editPip').value = '';
-    document.getElementById('editCommission').value = '';
+// ================= PAIRS =================
+function savePair(){
+  const n=editName.value.toUpperCase();
+  pairs[n]={
+    point:+editPoint.value,
+    pip:+editPip.value,
+    commission:+editCommission.value
   };
-
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = 'Close';
-  closeBtn.className = 'secondary';
-  closeBtn.onclick = closeModal;
-
-  btnDiv.appendChild(saveBtn);
-  btnDiv.appendChild(clearBtn);
-  btnDiv.appendChild(closeBtn);
-
-  editor.appendChild(btnDiv);
+  saveLocal();
+  db.collection(FIRE_COLLECTION).doc(n).set(pairs[n]);
+  populate();
 }
-function saveCloudEdit(name){
-  const point = parseFloat(document.getElementById('editPoint').value);
-  const pip = parseFloat(document.getElementById('editPip').value);
-  const commission = parseFloat(document.getElementById('editCommission').value);
-
-  if(isNaN(point) || isNaN(pip) || isNaN(commission)){
-    alert("Enter valid point, pip and commission.");
-    return;
-  }
-
-  // Update Firestore
-  db.collection(FIRE_COLLECTION).doc(name).set({
-    point,
-    pip,
-    commission
-  }).then(()=>{
-    pairs[name].point = point;
-    pairs[name].pip = pip;
-    pairs[name].commission = commission;
-    saveLocalPairs();
-    populateDropdown();
-    alert("Cloud pair updated successfully");
-    openSyncCloudAdmin();
-  });
-}
-
-function closeSyncArea(){document.getElementById('syncArea').style.display='none';document.getElementById('syncList').innerHTML='';document.getElementById('syncListWrap').style.display='none';cloudUnlocked=false;}
-function populateLocalSyncList(){
-  const wrap=document.getElementById('syncList');if(!wrap)return;wrap.innerHTML='';
-  Object.keys(pairs).sort().forEach(name=>{
-    if(pairs[name].type!=='local') return;
-    const div=document.createElement('div');div.className='pair-item';
-    div.innerHTML=`<span>${name}</span><input type="checkbox" data-name="${name}">`;
-    wrap.appendChild(div);
-  });
-}
-function unlockCloudForSync(){
-  const pw=document.getElementById('cloudPw').value.trim();
-  if(pw===CLOUD_PASSWORD){
-    cloudUnlocked=true;
-       document.getElementById('syncListWrap').style.display='block';
-  } else {
-    alert("Wrong cloud password.");
-  }
-}
-function pushSelectedToCloud(){
-  if(!cloudUnlocked) {alert("Unlock cloud first."); return;}
-  const checkboxes=document.querySelectorAll('#syncList input[type=checkbox]:checked');
-  checkboxes.forEach(cb=>{
-    const name=cb.dataset.name;
-    const data=pairs[name];
-    db.collection(FIRE_COLLECTION).doc(name).set({
-      point:data.point,
-      pip:data.pip,
-      commission:data.commission
-    });
-    pairs[name].type='cloud';
-  });
-  saveLocalPairs();
-  populateDropdown();
-  alert("Selected pairs pushed to cloud.");
-}
-
-
-
-// ===================== Login / Signup / Logout =====================
-function login(){
-  const e=document.getElementById('email').value.trim();
-  const p=document.getElementById('password').value;
-  auth.signInWithEmailAndPassword(e,p)
-    .catch(err=>{
-      document.getElementById('authMsg').innerText=err.message;
-    });
-}
-
-function signup(){
-  document.getElementById('name').style.display = 'block';
-  document.getElementById('confirmPassword').style.display='block';
-  document.getElementById('createBtn').style.display='inline-block';
-  document.getElementById('signupBtn').style.display='none';
-}
-
-function create(){
-  const authMsg = document.getElementById('authMsg');
-
-  // ✅ NAME (ADD THIS)
-  const name = document.getElementById('name').value.trim();
-  if(!name){
-    authMsg.innerText = "Name is required";
-    return;
-  }
-
-  const e = document.getElementById('email').value.trim();
-  const p = document.getElementById('password').value;
-  const cp = document.getElementById('confirmPassword').value;
-
-  if(p !== cp){
-    authMsg.innerText = "Passwords do not match";
-    return;
-  }
-
-  auth.createUserWithEmailAndPassword(e,p)
-    .then(cred=>{
-      // SEND VERIFICATION EMAIL
-      cred.user.sendEmailVerification();
-
-      // ✅ SAVE NAME TO FIRESTORE
-      return authDb.collection("users").doc(cred.user.uid).set({
-        name: name,
-        email: e,
-        approved: false,
-        emailVerified: false,
-        role: "user",
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    })
-  .then(()=>{
-  showInfoModal(
-  "Account Created",
-  "A verification link has been sent to your email. Please verify and login again."
-);
-
-
-      // cleanup UI
-      document.getElementById('name').value = '';
-      document.getElementById('name').style.display='none';
-      document.getElementById('confirmPassword').style.display='none';
-      document.getElementById('createBtn').style.display='none';
-      document.getElementById('signupBtn').style.display='inline-block';
-    })
-    .catch(err=>{
-      authMsg.innerText = err.message;
-    });
-}
-
-
-function logout(){
-  adminUnlocked = false; // <-- reset admin unlocked state
-  auth.signOut();
-}
-
-  function showVerifyModal(){
-  document.getElementById('verifyModal').style.display = 'flex';
-}
-
-function closeVerifyModal(){
-  document.getElementById('verifyModal').style.display = 'none';
-
-  auth.signOut();
-
-  // reset to login view
-  document.getElementById('name').value = '';
-  document.getElementById('name').style.display='none';
-  document.getElementById('confirmPassword').style.display='none';
-  document.getElementById('createBtn').style.display='none';
-  document.getElementById('signupBtn').style.display='inline-block';
-  document.getElementById('password').value='';
-  document.getElementById('confirmPassword').value='';
-}
-  function showInfoModal(title, text){
-  document.getElementById('infoTitle').innerText = title;
-  document.getElementById('infoText').innerText = text;
-  document.getElementById('infoModal').style.display = 'flex';
-}
-
-function closeInfoModal(){
-  document.getElementById('infoModal').style.display = 'none';
-
-  // reset forgot password UI (safe)
-  document.getElementById('forgotEmailWrap').style.display = 'none';
-  document.getElementById('forgotEmail').value = '';
-  document.getElementById('forgotMsg').innerText = '';
-
-  // CLOSE add/edit/sync modal if open
-  document.getElementById('modal').style.display = 'none';
-
-  // STAY on calculator page
-  document.getElementById('authSection').style.display = 'none';
-  document.getElementById('calcSection').style.display = 'block';
-}
-
-
-
-// ===================== Admin functions =====================
-function loadPendingUsers(){
-  const list = document.getElementById('userList');
-  list.innerHTML = "Loading...";
-
- authDb.collection("users")
-  .where("approved", "==", false)
-  
-    .get()
-    .then(snapshot=>{
-      list.innerHTML = "";
-      if(snapshot.empty){
-        list.innerHTML = "<div class='small'>No pending users</div>";
-        return;
-      }
-      snapshot.forEach(doc=>{
-        const data = doc.data();
-        const div = document.createElement("div");
-        div.className = "pair-item";
-
-        const email = document.createElement("span");
-        email.textContent = data.email || doc.id;
-
-        const btn = document.createElement("button");
-        btn.textContent = "Approve";
-        btn.className = "small-btn";
-        btn.onclick = ()=>approveUser(doc.id);
-
-        div.appendChild(email);
-        div.appendChild(btn);
-        list.appendChild(div);
-      });
-    });
-}
-
-function approveUser(uid){
-  if(!confirm("Approve this user?")) return;
-
-  const adminUid = auth.currentUser.uid;
-  const approvedAt = firebase.firestore.FieldValue.serverTimestamp();
-
-  authDb.collection("users").doc(uid).update({
-    approved: true
-  }).then(()=>{
-   
-    loadPendingUsers();
-    
-  });
-}
-/* ===== ADMIN MODAL FUNCTIONS (ADD HERE) ===== */
-
-function openAdminGate(){
-  document.getElementById('adminGate').style.display = 'block';
-  document.getElementById('adminPanel').style.display = 'none';
-  document.getElementById('adminPw').value = '';
-}
-
-function unlockAdmin(){
-  const pw = document.getElementById('adminPw').value.trim();
-  if(!pw) return;
-
-  authDb.collection("config").doc("admin").get().then(doc=>{
-    console.log("ADMIN DOC EXISTS:", doc.exists);
-    console.log("ADMIN DATA:", doc.data());
-    console.log("ENTERED PW:", pw);
-
-    if(!doc.exists || doc.data().password !== pw){
-      alert("Wrong admin password");
-      return;
-    }
-
-   document.getElementById('adminGate').style.display = 'none';
-resetModalSections();      // <--- Add this to hide all first
-document.getElementById('adminPanel').style.display = 'block';
-loadPendingUsers();
-
-  });
-}
-
-
-
-function closeAdmin(){
-  document.getElementById('adminGate').style.display = 'none';
-  document.getElementById('adminPanel').style.display = 'none';
-}
-
-/* ===== END ADMIN MODAL FUNCTIONS ===== */
-
-
-// ===================== Admin Popup Functions =====================
-function openAdminPopup(){
-  // Close main Add/Edit/Sync modal if open
-  document.getElementById('modal').style.display = 'none';
-
-  // Open Admin Panel popup
-  document.getElementById('adminPopup').style.display = 'flex';
-
-  if(adminUnlocked){
-    // Already unlocked → show content directly
-    document.getElementById('adminPopupGate').style.display = 'none';
-    document.getElementById('adminPopupContent').style.display = 'block';
-    showAdminTab('sync');
-  } else {
-    // Not unlocked → show password input
-    document.getElementById('adminPopupGate').style.display = 'block';
-    document.getElementById('adminPopupContent').style.display = 'none';
-    document.getElementById('adminPopupPw').value = '';
-  }
-}
-
-
-
-function closeAdminPopup(){
-  document.getElementById('adminPopup').style.display = 'none';
-}
-
-function unlockAdminPopup(){
-  if(adminUnlocked){ // <-- already unlocked
-    document.getElementById('adminPopupGate').style.display = 'none';
-    document.getElementById('adminPopupContent').style.display = 'block';
-    showAdminTab('sync');
-    return;
-  }
-
-  const pw = document.getElementById('adminPopupPw').value.trim();
-  if(!pw) return;
-
-  authDb.collection("config").doc("admin").get().then(doc=>{
-    if(!doc.exists || doc.data().password !== pw){
-      alert("Wrong admin password");
-      return;
-    }
-
-    adminUnlocked = true; // <-- remember unlocked state
-    document.getElementById('adminPopupGate').style.display = 'none';
-    document.getElementById('adminPopupContent').style.display = 'block';
-    showAdminTab('sync');
-  });
-}
-
-function showAdminTab(tab){
-  document.getElementById('adminSyncTab').style.display = tab==='sync' ? 'block' : 'none';
-  document.getElementById('adminApprovalTab').style.display = tab==='approval' ? 'block' : 'none';
-
-  if(tab==='sync') loadAdminSyncList();
-  if(tab==='approval') loadAdminApprovalList();
-}
-
-// Load cloud/local pairs into admin popup
-function loadAdminSyncList(){
-  const wrap = document.getElementById('adminSyncList');
-  wrap.innerHTML = '';
-
-  // Add Push button row at the top
-const topRow = document.createElement('div');
-topRow.className = 'row';
-topRow.style.marginBottom = '8px';
-
-const pushBtn = document.createElement('button');
-pushBtn.textContent = 'Push Selected to Cloud';
-pushBtn.onclick = pushSelectedAdminCloud;
-
-topRow.appendChild(pushBtn);
-wrap.appendChild(topRow);
-
-  // List pairs
-  Object.keys(pairs).sort().forEach(name => {
-    const p = pairs[name];
-    const div = document.createElement('div');
-    div.className = 'pair-item';
-
-    const span = document.createElement('span');
-    span.textContent = `${name} (${p.type==='cloud'?'C':'L'})`;
-
-    const btns = document.createElement('div');
-
-    if(p.type === 'local'){
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.dataset.name = name;
-      btns.appendChild(cb);
-    } else if(p.type === 'cloud'){
-      const edit = document.createElement('button');
-      edit.className = 'small-btn';
-      edit.textContent = 'Edit';
-      edit.onclick = () => openEditCloudPair(name);
-
-      const del = document.createElement('button');
-      del.className = 'small-btn';
-      del.textContent = 'Delete';
-      del.onclick = () => {
-        if(confirm("Delete cloud pair "+name+"?")){
-          db.collection(FIRE_COLLECTION).doc(name).delete();
-          delete pairs[name];
-          saveLocalPairs();
-          loadAdminSyncList();
-        }
-      };
-
-      btns.appendChild(edit);
-      btns.appendChild(del);
-    }
-
-    div.appendChild(span);
-    div.appendChild(btns);
-    wrap.appendChild(div);
-  });
-}
-
-// Function to push selected local pairs to cloud from Admin Popup
-function pushSelectedAdminCloud(){
-  const checkboxes = document.querySelectorAll('#adminSyncList input[type=checkbox]:checked');
-  if(checkboxes.length === 0){
-    alert("Select at least one pair.");
-    return;
-  }
-
-  checkboxes.forEach(cb => {
-    const name = cb.dataset.name;
-    const data = pairs[name];
-    db.collection(FIRE_COLLECTION).doc(name).set({
-      point: data.point,
-      pip: data.pip,
-      commission: data.commission
-    });
-    pairs[name].type = 'cloud';
-  });
-
-  saveLocalPairs();
-  loadAdminSyncList();
-  populateDropdown(); // update main dropdown
-  alert("Selected pairs pushed to cloud.");
-}
-
-// Load pending user approvals
-function loadAdminApprovalList(){
-  const list = document.getElementById('adminApprovalList');
-  list.innerHTML = "Loading...";
-
-  authDb.collection("users").where("approved", "==", false)
-    .get().then(snapshot=>{
-      list.innerHTML = "";
-      if(snapshot.empty){
-        list.innerHTML = "<div class='small'>No pending users</div>";
-        return;
-      }
-      snapshot.forEach(doc=>{
-        const data = doc.data();
-        const div = document.createElement("div");
-        div.className = "pair-item";
-
-        const email = document.createElement("span");
-        email.textContent = data.email || doc.id;
-
-        const btn = document.createElement("button");
-        btn.textContent = "Approve";
-        btn.className = "small-btn";
-        btn.onclick = ()=>approveUser(doc.id);
-
-        div.appendChild(email);
-        div.appendChild(btn);
-        list.appendChild(div);
-      });
-    });
-}
-  function getOrderedKeys(){
-  return Object.keys(pairs)
-    .map(name => ({
-      name,
-      order: typeof pairs[name].order === 'number'
-        ? pairs[name].order
-        : 9999
-    }))
-    .sort((a,b)=>a.order-b.order)
-    .map(o=>o.name);
-}
-
-function moveUp(name){
-  const keys = getOrderedKeys();
-  const i = keys.indexOf(name);
-  if(i <= 0) return;
-
-  const a = keys[i];
-  const b = keys[i-1];
-
-  const tmp = pairs[a].order;
-  pairs[a].order = pairs[b].order;
-  pairs[b].order = tmp;
-
-  saveLocalPairs();
-  populateDropdown();
-}
-
-function moveDown(name){
-  const keys = getOrderedKeys();
-  const i = keys.indexOf(name);
-  if(i === -1 || i === keys.length-1) return;
-
-  const a = keys[i];
-  const b = keys[i+1];
-
-  const tmp = pairs[a].order;
-  pairs[a].order = pairs[b].order;
-  pairs[b].order = tmp;
-
-  saveLocalPairs();
-  populateDropdown();
-}
-  function reorderPairs(from, to){
-  const keys = getOrderedKeys();
-  const fromIndex = keys.indexOf(from);
-  const toIndex = keys.indexOf(to);
-
-  if(fromIndex === -1 || toIndex === -1) return;
-
-  keys.splice(fromIndex, 1);
-  keys.splice(toIndex, 0, from);
-
-  keys.forEach((k,i)=>{
-    pairs[k].order = i;
-  });
-
-  saveLocalPairs();
-  populateDropdown();
-}
-
-function normalizePairOrder(){
-  let i = 0;
-  getOrderedKeys().forEach(name=>{
-    pairs[name].order = i++;
-  });
-  saveLocalPairs();
-}
-
-// ===================== Delete / Edit Popup =====================
-function openDeleteEditPopup(){
-  // ✅ CLOSE Add / Edit / Sync modal FIRST
-  const mainModal = document.getElementById('modal');
-  mainModal.style.display = 'none';
-  mainModal.setAttribute('aria-hidden','true');
-
-  const wrap = document.getElementById('deleteEditList');
-  wrap.innerHTML = '';
-
-  getOrderedKeys().forEach(name=>{
-    const p = pairs[name];
-
-    const row = document.createElement('div');
-row.className = 'pair-item';
-row.draggable = true;
-row.dataset.name = name;
-row.addEventListener('dragstart', e=>{
-  e.dataTransfer.setData('text/plain', name);
-});
-
-row.addEventListener('dragover', e=>{
-  e.preventDefault();
-  row.style.background = '#e8f0ff';
-});
-
-row.addEventListener('dragleave', ()=>{
-  row.style.background = '';
-});
-
-row.addEventListener('drop', e=>{
-  e.preventDefault();
-  row.style.background = '';
-
-  const from = e.dataTransfer.getData('text/plain');
-  const to = name;
-
-  if(from === to) return;
-
-  reorderPairs(from, to);
-  openDeleteEditPopup();
-});
-
-
-    const label = document.createElement('span');
-    label.textContent = `${name} (${p.type==='cloud'?'C':'L'})`;
-
-    const btns = document.createElement('div');
-
-    // LOCAL → EDIT
-    if(p.type === 'local'){
-      const edit = document.createElement('button');
-      edit.className = 'small-btn';
-      edit.textContent = 'Edit';
-      edit.onclick = ()=>{
-        closeDeleteEditPopup();
-        openModal();
-
-        document.getElementById('editName').value = name;
-        document.getElementById('editPoint').value = p.point;
-        document.getElementById('editPip').value = p.pip;
-        document.getElementById('editCommission').value = p.commission;
-      };
-      btns.appendChild(edit);
-    }
-
-    // LOCAL → DELETE
-    if(p.type === 'local'){
-      const del = document.createElement('button');
-      del.className = 'small-btn';
-      del.textContent = 'Delete';
-      del.onclick = ()=>{
-        if(confirm(`Delete ${name}?`)){
-          delete pairs[name];
-          saveLocalPairs();
-          populateDropdown();
-          openDeleteEditPopup();
-        }
-      };
-      btns.appendChild(del);
-    }
-
-    // MOVE UP
-    const up = document.createElement('button');
-    up.className = 'small-btn';
-    up.textContent = '↑';
-    up.onclick = ()=>{
-      moveUp(name);
-      openDeleteEditPopup();
+function renderList(){
+  const w=document.getElementById("pairList");
+  w.innerHTML="";
+  Object.keys(pairs).forEach(n=>{
+    const d=document.createElement("div");
+    d.className="pair-item";
+    d.innerHTML=`<span>${n}</span>`;
+    const b=document.createElement("button");
+    b.className="small-btn";
+    b.textContent="Delete";
+    b.onclick=()=>{
+      delete pairs[n];
+      db.collection(FIRE_COLLECTION).doc(n).delete();
+      saveLocal();populate();
     };
-
-    // MOVE DOWN
-    const down = document.createElement('button');
-    down.className = 'small-btn';
-    down.textContent = '↓';
-    down.onclick = ()=>{
-      moveDown(name);
-      openDeleteEditPopup();
-    };
-
-    btns.appendChild(up);
-    btns.appendChild(down);
-
-    row.appendChild(label);
-    row.appendChild(btns);
-    wrap.appendChild(row);
+    d.appendChild(b);
+    w.appendChild(d);
   });
-
-  // ✅ OPEN Delete/Edit popup ONLY
-  document.getElementById('deleteEditPopup').style.display='flex';
 }
 
-
-function closeDeleteEditPopup(){
-  document.getElementById('deleteEditPopup').style.display = 'none';
-}
-
-
-// ===================== Reload Cloud =====================
-function reloadCloud(){startCloudListener();}
-
-
-// ===================== Auth State Listener =====================
-auth.onAuthStateChanged(user=>{
-    // AUTH CHECK FINISHED → HIDE LOADER
-  document.getElementById('loadingScreen').style.display = 'none';
-
-  if(!user){
-    document.getElementById('calcSection').style.display='none';
-    document.getElementById('authSection').style.display='block';
-    USER_APPROVED = false;
-    return;
-  }
-
-  // Refresh user to get latest verification status
-  user.reload().then(()=>{
-   if(!user.emailVerified){
-  showVerifyModal();
-  return;
-}
-
-
-    const userRef = authDb.collection("users").doc(user.uid);
-
-    userRef.get().then(doc=>{
-      if(!doc.exists) return;
-
-      // Update Firestore once
-      if(doc.data().emailVerified !== true){
-        userRef.update({ emailVerified: true });
-      }
-
-      if(doc.data().approved !== true){
-        alert("Email verified. Waiting for admin approval.");
-        auth.signOut();
-        return;
-      }
-
-      // FULLY APPROVED USER
-      USER_APPROVED = true;
-      document.getElementById('authSection').style.display='none';
-      document.getElementById('calcSection').style.display='block';
-
-      const calc = document.getElementById('calcSection');
-      calc.style.pointerEvents = "auto";
-      calc.style.opacity = "1";
-
-  if(doc.data().role === "admin"){
-  window.IS_ADMIN = true;
-} else {
-  window.IS_ADMIN = false;
-}
-
-       loadLocalPairs();
-    // Only normalize if some pairs have no order
-if(Object.values(pairs).some(p => typeof p.order !== 'number')){
-  normalizePairOrder();
-}
-populateDropdown();
-startCloudListener();
-    });
-  });
-
-
-});
-
-// ===================== Event Listeners =====================
-document.getElementById('loginBtn').onclick=login;
-document.getElementById('signupBtn').onclick=signup;
-document.getElementById('createBtn').onclick=create;
-document.getElementById('logoutBtn').onclick=logout;
- // ===== Forgot Password Inline Functionality =====
-
-// Show email input when forgot clicked
-document.getElementById('forgotBtn').onclick = () => {
-  document.getElementById('forgotEmailWrap').style.display = 'block';
-  document.getElementById('forgotMsg').innerText = '';
-};
-
-// Cancel button hides input
-document.getElementById('cancelResetBtn').onclick = () => {
-  document.getElementById('forgotEmailWrap').style.display = 'none';
-  document.getElementById('forgotEmail').value = '';
-  document.getElementById('forgotMsg').innerText = '';
-};
-
-// Send reset link button
-document.getElementById('sendResetBtn').onclick = () => {
-  const email = document.getElementById('forgotEmail').value.trim();
-  const msgEl = document.getElementById('forgotMsg');
-
-  if(!email){
-    msgEl.innerText = "Enter your email first";
-    return;
-  }
-
-auth.sendPasswordResetEmail(email)
-  .then(() => {
-    showInfoModal(
-      "Password Reset Sent",
-      "If this email is registered, a password reset link has been sent. Please login again."
-    );
-  })
-
-  .catch(err => {
-    msgEl.innerText = err.message;
-
-    });
-};
-
-
+// ================= INIT =================
+loadLocal();
+reloadCloud();
 </script>
+
 </body>
 </html>
